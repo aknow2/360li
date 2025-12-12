@@ -10,13 +10,27 @@
 
 ## Local Development (planned)
 
-This repository currently contains feature specifications and plans only.
-Implementation is expected to be a single client-side web application.
+Install dependencies:
 
-Once implementation begins, this quickstart will be updated with the exact commands.
+```sh
+npm install
+```
+
+Start the dev server:
+
+```sh
+npm run dev
+```
+
+Build for production:
+
+```sh
+npm run build
+```
 
 ## Manual Verification Checklist (runtime)
 
 - Upload a valid 2:1 equirectangular JPEG/PNG → model appears in preview
 - Adjust parameters → preview updates
-- Export STL → file downloads and imports into a slicer as a watertight solid
+- Set Bottom hole diameter (mm) > 0 → bottom opening appears
+- Export STL → file downloads and imports into a slicer

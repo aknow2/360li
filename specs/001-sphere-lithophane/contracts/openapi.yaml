@@ -34,6 +34,7 @@ components:
         - radiusMm
         - minThicknessMm
         - maxThicknessMm
+        - holeDiameterMm
         - widthSegments
         - heightSegments
         - brightnessCurve
@@ -47,6 +48,10 @@ components:
           minimum: 0
         maxThicknessMm:
           type: number
+          minimum: 0
+        holeDiameterMm:
+          type: number
+          description: Diameter of the bottom opening (0 = no hole).
           minimum: 0
         widthSegments:
           type: integer

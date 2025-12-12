@@ -1,0 +1,21 @@
+export type LithophaneParams = {
+  radiusMm: number;
+  minThicknessMm: number;
+  maxThicknessMm: number;
+  holeDiameterMm: number;
+  widthSegments: number;
+  heightSegments: number;
+  brightnessCurve: number;
+  minCos: number;
+};
+
+export const DEFAULT_PARAMS: LithophaneParams = {
+  radiusMm: 60,
+  minThicknessMm: 0.8,
+  maxThicknessMm: 3.5,
+  holeDiameterMm: 0,
+  widthSegments: 256,
+  heightSegments: 128,
+  brightnessCurve: 0.6,
+  minCos: 0.25,
+};
