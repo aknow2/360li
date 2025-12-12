@@ -1,0 +1,98 @@
+openapi: 3.1.0
+info:
+  title: Spherical Lithophane Generator (Schemas)
+  version: 0.1.0
+  description: |
+    v1 is a client-only web app (no HTTP API). This OpenAPI document
+    intentionally defines schemas only to serve as internal data contracts
+    between UI, generator, and exporter modules, and to enable future API work.
+
+servers: []
+paths: {}
+
+components:
+  schemas:
+    SourceImage:
+      type: object
+      additionalProperties: false
+      required: [mimeType, width, height]
+      properties:
+        mimeType:
+          type: string
+          description: Image MIME type (e.g., image/jpeg, image/png)
+        width:
+          type: integer
+          minimum: 1
+        height:
+          type: integer
+          minimum: 1
+
+    LithophaneParameters:
+      type: object
+      additionalProperties: false
+      required:
+        - radiusMm
+        - minThicknessMm
+        - maxThicknessMm
+        - widthSegments
+        - heightSegments
+        - brightnessCurve
+        - minCos
+      properties:
+        radiusMm:
+          type: number
+          exclusiveMinimum: 0
+        minThicknessMm:
+          type: number
+          minimum: 0
+        maxThicknessMm:
+          type: number
+          minimum: 0
+        widthSegments:
+          type: integer
+          minimum: 8
+        heightSegments:
+          type: integer
+          minimum: 4
+        brightnessCurve:
+          type: number
+          description: User-facing brightness curve control (gamma-like).
+          minimum: 0.1
+          maximum: 3
+        minCos:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    GenerationSummary:
+      type: object
+      additionalProperties: false
+      required: [vertexCount, triangleCount]
+      properties:
+        vertexCount:
+          type: integer
+          minimum: 0
+        triangleCount:
+          type: integer
+          minimum: 0
+
+    ExportResult:
+      type: object
+      additionalProperties: false
+      required: [format]
+      properties:
+        format:
+          type: string
+          enum: [stl]
+        fileName:
+          type: string
+
+    ValidationError:
+      type: object
+      additionalProperties: false
+      required: [message]
+      properties:
+        message:
+          type: string
+        field:
+          type: string
