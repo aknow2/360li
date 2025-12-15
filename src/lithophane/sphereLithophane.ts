@@ -74,8 +74,13 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
   for (let i = 0; i < vertexCount; i++) {
     normal.fromBufferAttribute(pos, i).normalize();
 
-    const u = uv.getX(i);
-    const v = uv.getY(i);
+    // SphereGeometry UVs are not guaranteed to match the uploaded panorama's orientation.
+    // Our sampler interprets u=0 as left edge and v=0 as top edge (image-space).
+    // Map SphereGeometry UVs into image-space so relief and preview texture match.
+    const uRaw = uv.getX(i);
+    const vRaw = uv.getY(i);
+    const u = 1 - uRaw;
+    const v = 1 - vRaw;
     const brightness = sampler.sampleBrightness(u, v);
 
     const baseThickness = brightnessToThicknessMm(brightness, params);
@@ -177,8 +182,8 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
       positions[oBot * 3 + 2] = oz;
 
       // Reuse UVs from the corresponding top ring vertices.
-      const u = uv.getX(iTop);
-      const v = uv.getY(iTop);
+      const u = 1 - uv.getX(iTop);
+      const v = 1 - uv.getY(iTop);
       uvs[iBot * 2 + 0] = u;
       uvs[iBot * 2 + 1] = v;
       uvs[oBot * 2 + 0] = u;
