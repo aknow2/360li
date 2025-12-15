@@ -14,8 +14,8 @@ export type LithophaneParams = {
 
 export const DEFAULT_PARAMS: LithophaneParams = {
   radiusMm: 60,
-  minThicknessMm: 0.8,
-  maxThicknessMm: 3.5,
+  minThicknessMm: 2.8,
+  maxThicknessMm: 5.5,
   holeDiameterMm: 0,
   holeAtTop: false,
   standWallThicknessMm: 2,
