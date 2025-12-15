@@ -5,11 +5,15 @@ type ControlsProps = {
   statusText?: string | null;
   errorMessage?: string | null;
   onSelectFile?: (file: File) => void;
+  showTexture?: boolean;
+  onToggleShowTexture?: (next: boolean) => void;
   params?: LithophaneParams;
   paramsErrorField?: string | null;
   paramsErrorMessage?: string | null;
   onChangeParams?: (next: LithophaneParams) => void;
   paramsEnabled?: boolean;
+  buildEnabled?: boolean;
+  onBuild?: () => void;
   exportEnabled?: boolean;
   exportErrorMessage?: string | null;
   onExport?: () => void;
@@ -30,11 +34,15 @@ export function Controls({
   statusText,
   errorMessage,
   onSelectFile,
+  showTexture,
+  onToggleShowTexture,
   params,
   paramsErrorField,
   paramsErrorMessage,
   onChangeParams,
   paramsEnabled,
+  buildEnabled,
+  onBuild,
   exportEnabled,
   exportErrorMessage,
   onExport,
@@ -55,6 +63,15 @@ export function Controls({
                 if (file) onSelectFile?.(file);
               }}
             />
+          </label>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              type="checkbox"
+              checked={Boolean(showTexture)}
+              onChange={(e) => onToggleShowTexture?.(e.currentTarget.checked)}
+            />
+            <span>Show grayscale texture</span>
           </label>
 
           {errorMessage ? (
@@ -158,6 +175,40 @@ export function Controls({
                 ) : null}
               </label>
 
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(params?.holeAtTop)}
+                  onChange={(e) => {
+                    if (!params) return;
+                    onChangeParams?.({ ...params, holeAtTop: e.currentTarget.checked });
+                  }}
+                />
+                <span>Place hole/stand at top</span>
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Stand wall thickness (mm)</span>
+                <input
+                  type="number"
+                  step={0.1}
+                  min={0}
+                  value={params?.standWallThicknessMm ?? ''}
+                  onChange={(e) => {
+                    if (!params) return;
+                    onChangeParams?.({
+                      ...params,
+                      standWallThicknessMm: numberOr(params.standWallThicknessMm, e.currentTarget.value),
+                    });
+                  }}
+                />
+                {paramsErrorField === 'standWallThicknessMm' ? (
+                  <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
+                    {paramsErrorMessage}
+                  </div>
+                ) : null}
+              </label>
+
               <label style={{ display: 'grid', gap: 6 }}>
                 <span>Brightness curve</span>
                 <input
@@ -173,6 +224,29 @@ export function Controls({
                   }}
                 />
                 {paramsErrorField === 'brightnessCurve' ? (
+                  <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
+                    {paramsErrorMessage}
+                  </div>
+                ) : null}
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Contrast (0..3)</span>
+                <input
+                  type="number"
+                  step={0.05}
+                  min={0}
+                  max={3}
+                  value={params?.contrast ?? ''}
+                  onChange={(e) => {
+                    if (!params) return;
+                    onChangeParams?.({
+                      ...params,
+                      contrast: numberOr(params.contrast, e.currentTarget.value),
+                    });
+                  }}
+                />
+                {paramsErrorField === 'contrast' ? (
                   <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
                     {paramsErrorMessage}
                   </div>
@@ -242,6 +316,10 @@ export function Controls({
               </label>
             </div>
           </fieldset>
+
+          <button type="button" disabled={!buildEnabled} onClick={() => onBuild?.()}>
+            Build
+          </button>
 
           <button type="button" disabled={!exportEnabled} onClick={() => onExport?.()}>
             Export STL

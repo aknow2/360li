@@ -11,8 +11,15 @@ export function applyBrightnessCurve(brightness01: number, curve: number): numbe
   return clamp(Math.pow(b, curve), 0, 1);
 }
 
+export function applyContrast(brightness01: number, contrast: number): number {
+  // Contrast around mid-gray (0.5). 1 = unchanged, 0 = flat mid-gray.
+  const b = clamp(brightness01, 0, 1);
+  return clamp((b - 0.5) * contrast + 0.5, 0, 1);
+}
+
 export function brightnessToThicknessMm(brightness01: number, params: LithophaneParams): number {
-  const curved = applyBrightnessCurve(brightness01, params.brightnessCurve);
+  const contrasted = applyContrast(brightness01, params.contrast);
+  const curved = applyBrightnessCurve(contrasted, params.brightnessCurve);
   const t =
     params.minThicknessMm +
     (1 - curved) * (params.maxThicknessMm - params.minThicknessMm);

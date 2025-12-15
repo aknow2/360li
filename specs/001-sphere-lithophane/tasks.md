@@ -110,9 +110,10 @@
 **Purpose**: Improvements that affect multiple user stories without expanding scope.
 
 - [x] T034 [P] Update docs with real dev commands and verification steps in specs/001-sphere-lithophane/quickstart.md
-- [ ] T035 Improve error recovery so UI returns to a safe state after failures in src/domain/state.ts
+- [x] T035 Improve error recovery so UI returns to a safe state after failures in src/domain/state.ts
 - [x] T036 Add minimal loading indication during generation/export in src/components/Controls.tsx
 - [ ] T037 Confirm defaults produce a successful first run (no tuning) by adjusting src/domain/params.ts defaults if needed
+- [x] T039 Document image→3D conversion pipeline in specs/001-sphere-lithophane/image-to-3d.md
 
 ---
 

@@ -49,8 +49,8 @@ export type AppState =
       file: File | null;
       params: LithophaneParams;
       paramsError: ParamsValidationError;
-      geometry: null;
-      summary: null;
+      geometry: BufferGeometry | null;
+      summary: GenerationSummary | null;
       errorMessage: string;
     };
 
@@ -136,8 +136,8 @@ export function reducer(state: AppState, action: AppAction): AppState {
         file: state.status === 'idle' ? null : state.file,
         params: state.status === 'idle' ? DEFAULT_PARAMS : state.params,
         paramsError: state.status === 'idle' ? null : state.paramsError,
-        geometry: null,
-        summary: null,
+        geometry: state.status === 'ready' ? state.geometry : null,
+        summary: state.status === 'ready' ? state.summary : null,
         errorMessage: action.errorMessage,
       };
     case 'reset':

@@ -34,3 +34,7 @@ npm run build
 - Adjust parameters → preview updates
 - Set Bottom hole diameter (mm) > 0 → bottom opening appears
 - Export STL → file downloads and imports into a slicer
+
+## How it works
+
+- Image → 3D conversion notes: [specs/001-sphere-lithophane/image-to-3d.md](image-to-3d.md)

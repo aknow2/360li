@@ -57,6 +57,29 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
+  if (!(params.standWallThicknessMm >= 0)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'standWallThicknessMm',
+        message: 'Stand wall thickness must be >= 0.',
+      },
+    };
+  }
+
+  // Only used when holeDiameterMm > 0, but still validate to keep state consistent.
+  if (params.standWallThicknessMm > params.radiusMm * 2) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'standWallThicknessMm',
+        message: 'Stand wall thickness is too large.',
+      },
+    };
+  }
+
   if (!Number.isInteger(params.widthSegments) || params.widthSegments < 8) {
     return {
       ok: false,
@@ -97,6 +120,17 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
         code: 'INVALID_PARAMS',
         field: 'heightSegments',
         message: 'Height segments must be <= 1024.',
+      },
+    };
+  }
+
+  if (!(params.contrast >= 0 && params.contrast <= 3)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'contrast',
+        message: 'Contrast must be between 0 and 3.',
       },
     };
   }

@@ -35,8 +35,11 @@ components:
         - minThicknessMm
         - maxThicknessMm
         - holeDiameterMm
+        - holeAtTop
+        - standWallThicknessMm
         - widthSegments
         - heightSegments
+        - contrast
         - brightnessCurve
         - minCos
       properties:
@@ -53,12 +56,24 @@ components:
           type: number
           description: Diameter of the bottom opening (0 = no hole).
           minimum: 0
+        holeAtTop:
+          type: boolean
+          description: When true and holeDiameterMm > 0, place the hole/stand on the top side instead of bottom.
+        standWallThicknessMm:
+          type: number
+          description: Wall thickness of the optional stand/pipe (used when holeDiameterMm > 0).
+          minimum: 0
         widthSegments:
           type: integer
           minimum: 8
         heightSegments:
           type: integer
           minimum: 4
+        contrast:
+          type: number
+          description: Contrast applied to sampled brightness before thickness mapping (0..3).
+          minimum: 0
+          maximum: 3
         brightnessCurve:
           type: number
           description: User-facing brightness curve control (gamma-like).

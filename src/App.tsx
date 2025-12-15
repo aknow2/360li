@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useReducer, useRef, useState } from 'react'
 import './App.css'
 import { Controls } from './components/Controls'
 import { Viewer } from './components/Viewer'
@@ -11,8 +11,8 @@ import { downloadBlob, exportGeometryToStlBlob } from './three/exporter'
 function App() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState)
   const runIdRef = useRef(0)
-  const lastGenKeyRef = useRef<string>('')
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null)
+  const [showTexture, setShowTexture] = useState(true)
 
   async function runGeneration(file: File, params: LithophaneParams) {
     dispatch({ type: 'start_generate' })
@@ -36,7 +36,7 @@ function App() {
       dispatch({ type: 'set_params', params: state.params, paramsError: { field: v.error.field, message: v.error.message } })
       return
     }
-    await runGeneration(file, state.params)
+    // Do not auto-generate. User must press Build.
   }
 
   function handleChangeParams(next: LithophaneParams) {
@@ -49,20 +49,13 @@ function App() {
     })
   }
 
-  useEffect(() => {
-    if (state.status === 'idle') return
+  function handleBuild() {
+    setExportErrorMessage(null)
     if (!state.file) return
     if (state.status === 'generating') return
     if (state.paramsError) return
-
-    const key = JSON.stringify({ name: state.file.name, size: state.file.size, lm: state.file.lastModified, p: state.params })
-    if (key === lastGenKeyRef.current) return
-    lastGenKeyRef.current = key
-
-    // Trigger regeneration on param changes.
     void runGeneration(state.file, state.params)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.file, state.params, state.paramsError, state.status])
+  }
 
   function handleExport() {
     setExportErrorMessage(null)
@@ -109,11 +102,15 @@ function App() {
             }
             errorMessage={state.status === 'error' ? state.errorMessage : null}
             onSelectFile={handleSelectFile}
+            showTexture={showTexture}
+            onToggleShowTexture={setShowTexture}
             params={state.params}
             paramsEnabled={state.status !== 'idle'}
             paramsErrorField={state.paramsError?.field ?? null}
             paramsErrorMessage={state.paramsError?.message ?? null}
             onChangeParams={handleChangeParams}
+            buildEnabled={Boolean(state.file) && state.status !== 'generating' && !state.paramsError}
+            onBuild={handleBuild}
             exportEnabled={state.status === 'ready'}
             exportErrorMessage={exportErrorMessage}
             onExport={handleExport}
@@ -122,12 +119,16 @@ function App() {
 
         <main className="viewer">
           <Viewer
-            geometry={state.status === 'ready' ? state.geometry : null}
+            geometry={state.geometry}
+            file={state.status === 'idle' ? null : state.file}
+            showTexture={showTexture}
             placeholderText={
               state.status === 'generating'
                 ? 'Generating…'
                 : state.status === 'error'
                   ? 'Fix the error and try again.'
+                  : state.status === 'imageLoaded'
+                    ? 'Press Build to generate.'
                   : '3D preview will appear here.'
             }
           />
