@@ -5,12 +5,11 @@ import { generateSphereLithophane } from '../lithophane/sphereLithophane';
 
 export type GenerateOptions = {
   params?: LithophaneParams;
-  aspectTolerance?: number;
 };
 
 export async function generateFromFile(file: File, options: GenerateOptions = {}) {
   const params = options.params ?? DEFAULT_PARAMS;
-  const decoded = await decodeImageToImageData(file, options.aspectTolerance);
+  const decoded = await decodeImageToImageData(file, { imageScale: params.imageScale });
   return generateSphereLithophane(decoded.imageData, params);
 }
 

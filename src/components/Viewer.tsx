@@ -2,19 +2,22 @@ import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { BufferGeometry } from 'three';
 import { createScene, type SceneHandle } from '../three/scene';
+import { createWorkingImage } from '../lithophane/workingImage';
 
 type ViewerProps = {
   geometry: BufferGeometry | null;
   file?: File | null;
+  imageScale?: number;
   showTexture?: boolean;
   placeholderText?: string;
 };
 
-export function Viewer({ geometry, file = null, showTexture = true, placeholderText = '3D preview will appear here.' }: ViewerProps) {
+export function Viewer({ geometry, file = null, imageScale = 1, showTexture = true, placeholderText = '3D preview will appear here.' }: ViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
   const textureRef = useRef<THREE.Texture | null>(null);
+  const textureKeyRef = useRef<string | null>(null);
 
   const materials = useMemo(() => {
     const outer = new THREE.MeshStandardMaterial({
@@ -47,50 +50,84 @@ export function Viewer({ geometry, file = null, showTexture = true, placeholderT
     return { outer, inner, wall };
   }, []);
 
+  function disposeTexture() {
+    if (textureRef.current) {
+      textureRef.current.dispose();
+      textureRef.current = null;
+    }
+    textureKeyRef.current = null;
+  }
+
+  useEffect(() => {
+    // Component unmount cleanup.
+    return () => {
+      disposeTexture();
+      materials.outer.map = null;
+      materials.outer.needsUpdate = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Toggle map attachment without disposing the cached texture.
+    if (!showTexture) {
+      materials.outer.map = null;
+      materials.outer.needsUpdate = true;
+      return;
+    }
+
+    materials.outer.map = textureRef.current;
+    materials.outer.needsUpdate = true;
+  }, [showTexture, materials]);
+
   useEffect(() => {
     let cancelled = false;
 
-    async function setTextureFromFile(nextFile: File | null) {
-      // If disabled, just detach the map (keep cached texture for quick re-enable).
-      if (!showTexture) {
-        materials.outer.map = null;
-        materials.outer.needsUpdate = true;
-        return;
-      }
-
-      // If we already have a texture for the current file, reattach it.
-      if (textureRef.current) {
-        materials.outer.map = textureRef.current;
-        materials.outer.needsUpdate = true;
-        return;
-      }
-
+    async function ensureTexture(nextFile: File | null) {
       if (!nextFile) {
+        disposeTexture();
         materials.outer.map = null;
         materials.outer.needsUpdate = true;
         return;
       }
 
-      // Build a grayscale texture for preview. This is independent of the generation pipeline.
-      const maxWidth = 2048;
+      const key = `${nextFile.name}:${nextFile.size}:${nextFile.lastModified}:${imageScale}`;
+      if (textureRef.current && textureKeyRef.current === key) {
+        if (showTexture) {
+          materials.outer.map = textureRef.current;
+          materials.outer.needsUpdate = true;
+        }
+        return;
+      }
+
+      // Invalidate cached texture when file or transform settings change.
+      disposeTexture();
+      textureKeyRef.current = key;
+
+      const maxDim = 2048;
       let bitmap: ImageBitmap | null = null;
       try {
         bitmap = await createImageBitmap(nextFile);
         if (cancelled) return;
 
-        const scale = bitmap.width > maxWidth ? maxWidth / bitmap.width : 1;
+        const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
         const w = Math.max(1, Math.floor(bitmap.width * scale));
         const h = Math.max(1, Math.floor(bitmap.height * scale));
 
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        const srcCanvas = document.createElement('canvas');
+        srcCanvas.width = w;
+        srcCanvas.height = h;
+        const srcCtx = srcCanvas.getContext('2d');
+        if (!srcCtx) return;
 
-        ctx.drawImage(bitmap, 0, 0, w, h);
-        const img = ctx.getImageData(0, 0, w, h);
-        const data = img.data;
+        srcCtx.drawImage(bitmap, 0, 0, w, h);
+        const input = srcCtx.getImageData(0, 0, w, h);
+
+        // Use the same working-image rules as generation (padding + imageScale).
+        const working = createWorkingImage(input, { imageScale });
+
+        // Convert to grayscale for preview.
+        const data = working.data;
         for (let i = 0; i < data.length; i += 4) {
           const r = data[i + 0];
           const g = data[i + 1];
@@ -101,7 +138,13 @@ export function Viewer({ geometry, file = null, showTexture = true, placeholderT
           data[i + 2] = y;
           data[i + 3] = 255;
         }
-        ctx.putImageData(img, 0, 0);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = working.width;
+        canvas.height = working.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.putImageData(working, 0, 0);
 
         const tex = new THREE.CanvasTexture(canvas);
         tex.wrapS = THREE.RepeatWrapping;
@@ -112,25 +155,21 @@ export function Viewer({ geometry, file = null, showTexture = true, placeholderT
         tex.needsUpdate = true;
 
         textureRef.current = tex;
-        materials.outer.map = tex;
-        materials.outer.needsUpdate = true;
+        if (showTexture) {
+          materials.outer.map = tex;
+          materials.outer.needsUpdate = true;
+        }
       } finally {
         bitmap?.close();
       }
     }
 
-    void setTextureFromFile(file);
+    void ensureTexture(file);
 
     return () => {
       cancelled = true;
-      if (textureRef.current) {
-        textureRef.current.dispose();
-        textureRef.current = null;
-      }
-      materials.outer.map = null;
-      materials.outer.needsUpdate = true;
     };
-  }, [file, showTexture, materials]);
+  }, [file, imageScale, showTexture, materials]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

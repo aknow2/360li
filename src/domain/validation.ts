@@ -157,6 +157,17 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
+  if (!(params.imageScale > 0 && params.imageScale <= 1)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'imageScale',
+        message: 'Image scale must be > 0 and <= 1.',
+      },
+    };
+  }
+
   return { ok: true, value: params };
 }
 

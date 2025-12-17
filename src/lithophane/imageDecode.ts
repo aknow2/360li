@@ -1,10 +1,14 @@
 import type { AppError } from '../domain/errors';
-import { validateEquirectangularAspectRatio } from '../domain/validation';
+import { createWorkingImage } from './workingImage';
 
 export type DecodedImage = {
   imageData: ImageData;
   width: number;
   height: number;
+};
+
+export type DecodeOptions = {
+  imageScale?: number;
 };
 
 async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
@@ -25,7 +29,7 @@ async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
   }
 }
 
-export async function decodeImageToImageData(file: File, aspectTolerance = 0): Promise<DecodedImage> {
+export async function decodeImageToImageData(file: File, options: DecodeOptions = {}): Promise<DecodedImage> {
   const mimeType = file.type;
   if (mimeType !== 'image/jpeg' && mimeType !== 'image/png') {
     const err: AppError = {
@@ -46,9 +50,6 @@ export async function decodeImageToImageData(file: File, aspectTolerance = 0): P
     width = bitmap.width;
     height = bitmap.height;
 
-    const aspect = validateEquirectangularAspectRatio(width, height, aspectTolerance);
-    if (!aspect.ok) throw aspect.error;
-
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -62,9 +63,6 @@ export async function decodeImageToImageData(file: File, aspectTolerance = 0): P
     width = img.naturalWidth;
     height = img.naturalHeight;
 
-    const aspect = validateEquirectangularAspectRatio(width, height, aspectTolerance);
-    if (!aspect.ok) throw aspect.error;
-
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -75,5 +73,7 @@ export async function decodeImageToImageData(file: File, aspectTolerance = 0): P
     imageData = ctx.getImageData(0, 0, width, height);
   }
 
-  return { imageData, width, height };
+  // All images are converted into a 2:1 working image (white padding + optional imageScale).
+  const working = createWorkingImage(imageData, { imageScale: options.imageScale ?? 1 });
+  return { imageData: working, width: working.width, height: working.height };
 }

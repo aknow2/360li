@@ -121,6 +121,7 @@ function App() {
           <Viewer
             geometry={state.geometry}
             file={state.status === 'idle' ? null : state.file}
+            imageScale={state.params.imageScale}
             showTexture={showTexture}
             placeholderText={
               state.status === 'generating'

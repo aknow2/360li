@@ -10,6 +10,7 @@ export type LithophaneParams = {
   contrast: number;
   brightnessCurve: number;
   minCos: number;
+  imageScale: number;
 };
 
 export const DEFAULT_PARAMS: LithophaneParams = {
@@ -24,4 +25,5 @@ export const DEFAULT_PARAMS: LithophaneParams = {
   contrast: 1,
   brightnessCurve: 0.6,
   minCos: 0.25,
+  imageScale: 1,
 };

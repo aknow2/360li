@@ -54,7 +54,7 @@ export function Controls({
           {statusText ? <div style={{ fontSize: 12, opacity: 0.8 }}>{statusText}</div> : null}
 
           <label style={{ display: 'grid', gap: 6 }}>
-            <span>Source image (JPEG/PNG, 2:1)</span>
+            <span>Source image (JPEG/PNG)</span>
             <input
               type="file"
               accept="image/png,image/jpeg"
@@ -247,6 +247,29 @@ export function Controls({
                   }}
                 />
                 {paramsErrorField === 'contrast' ? (
+                  <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
+                    {paramsErrorMessage}
+                  </div>
+                ) : null}
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Image scale (0..1)</span>
+                <input
+                  type="number"
+                  step={0.01}
+                  min={0}
+                  max={1}
+                  value={params?.imageScale ?? ''}
+                  onChange={(e) => {
+                    if (!params) return;
+                    onChangeParams?.({
+                      ...params,
+                      imageScale: numberOr(params.imageScale, e.currentTarget.value),
+                    });
+                  }}
+                />
+                {paramsErrorField === 'imageScale' ? (
                   <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
                     {paramsErrorMessage}
                   </div>

@@ -1,0 +1,54 @@
+openapi: 3.0.3
+info:
+  title: Sphere Lithophane - Image Transform Contracts
+  version: 0.1.0
+  description: |
+    Schema-only contract describing parameters for transforming an arbitrary input image
+    into a 2:1 working image (white padding + optional scale).
+
+paths: {}
+
+components:
+  schemas:
+    ImageTransformSettings:
+      type: object
+      additionalProperties: false
+      required:
+        - imageScale
+      properties:
+        imageScale:
+          type: number
+          description: |
+            Scale applied to the input image before centering it in the 2:1 working image.
+            The remaining area is white.
+          exclusiveMinimum: 0
+          maximum: 1
+          default: 1.0
+        padColor:
+          type: string
+          description: Padding/background color for the working image (fixed for this feature).
+          enum:
+            - white
+          default: white
+
+    WorkingImageRule:
+      type: object
+      additionalProperties: false
+      description: Rules defining the derived working image.
+      properties:
+        aspect:
+          type: string
+          enum:
+            - "2:1"
+        stretch:
+          type: boolean
+          enum:
+            - false
+        crop:
+          type: boolean
+          enum:
+            - false
+        background:
+          type: string
+          enum:
+            - white
