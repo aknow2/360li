@@ -35,6 +35,18 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
+  // For inward-thickness mode, ensure the inner surface never crosses the center.
+  if (params.thicknessDirection === 'inward' && !(params.maxThicknessMm < params.radiusMm)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'maxThicknessMm',
+        message: 'Max thickness must be < radius when thickness direction is inward.',
+      },
+    };
+  }
+
   if (!(params.holeDiameterMm >= 0)) {
     return {
       ok: false,

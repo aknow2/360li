@@ -21,9 +21,13 @@ function clamp(x: number, min: number, max: number): number {
 export function generateSphereLithophane(imageData: ImageData, params: LithophaneParams): GenerateResult {
   const sampler = createImageSampler(imageData);
 
-  const innerRadius = params.radiusMm;
+  const thicknessDirection = params.thicknessDirection ?? 'outward';
+  // Thickness direction:
+  // - outward: inner surface is radiusMm, thickness extends outward
+  // - inward: outer surface is radiusMm, thickness carves inward
+  const baseRadius = params.radiusMm;
 
-  const base = new THREE.SphereGeometry(innerRadius, params.widthSegments, params.heightSegments);
+  const base = new THREE.SphereGeometry(baseRadius, params.widthSegments, params.heightSegments);
   base.computeVertexNormals();
 
   const pos = base.getAttribute('position');
@@ -37,13 +41,14 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
 
   // Optional bottom opening. We cut along a latitude band boundary (no triangle splitting)
   // so the opening diameter is an approximation based on mesh resolution.
-  const holeRadius = clamp(params.holeDiameterMm / 2, 0, innerRadius);
+  // Backward compatibility: hole cut is defined on the base sphere.
+  const holeRadius = clamp(params.holeDiameterMm / 2, 0, baseRadius);
   const holeEnabled = holeRadius > 0;
   // Note: SphereGeometry UVs use v=1 at the top (north pole) and v=0 at the bottom (south pole).
   // For a bottom hole of radius r on a sphere of radius R, the cut latitude satisfies:
   // r = R * sin(alpha) where alpha is the angle up from the bottom pole.
   // In SphereGeometry's UV convention, v = alpha / PI.
-  const alpha = holeEnabled ? Math.asin(clamp(holeRadius / innerRadius, 0, 1)) / Math.PI : 0;
+  const alpha = holeEnabled ? Math.asin(clamp(holeRadius / baseRadius, 0, 1)) / Math.PI : 0;
   const desiredV = holeEnabled ? (params.holeAtTop ? 1 - alpha : alpha) : 0;
   // Convert v (texture space) to a mesh row index (iy): v = 1 - iy/heightSegments.
   const ringRow = holeEnabled
@@ -56,7 +61,7 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
   const standEnabled = holeEnabled && ringRow < params.heightSegments;
   // Simple, printable default stand height. (No UI control; derived from hole size.)
   const standHeightMm = standEnabled ? clamp(params.holeDiameterMm * 0.25, 3, 12) : 0;
-  const standWallThicknessMm = clamp(params.standWallThicknessMm, 0, innerRadius * 2);
+  const standWallThicknessMm = clamp(params.standWallThicknessMm, 0, baseRadius * 2);
 
   const vertexCount = pos.count;
   const innerPositions = new Float32Array(vertexCount * 3);
@@ -85,10 +90,13 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
 
     const baseThickness = brightnessToThicknessMm(brightness, params);
     const factor = compensationFactor(normal, DEFAULT_VIEW_DIR, params.minCos);
-    const thickness = baseThickness * factor;
+    // Apply view-angle compensation but keep the final thickness within requested bounds.
+    // Without this clamp, small minThicknessMm values can become much thinner (e.g. minCos=0.25),
+    // which many slicers will treat as missing/too-thin surfaces.
+    const thickness = clamp(baseThickness * factor, params.minThicknessMm, params.maxThicknessMm);
 
-    const innerR = innerRadius;
-    const outerR = innerRadius + thickness;
+    const innerR = thicknessDirection === 'inward' ? baseRadius - thickness : baseRadius;
+    const outerR = thicknessDirection === 'inward' ? baseRadius : baseRadius + thickness;
 
     innerPositions[i * 3 + 0] = normal.x * innerR;
     innerPositions[i * 3 + 1] = normal.y * innerR;
@@ -143,8 +151,9 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
   // Pipe-like stand: extrude the cut ring downward to create a stable base for printing.
   if (standEnabled) {
     // Create bottom ring vertices (planar bottom Y for stability).
-    const innerTopY = innerPositions[baseRow * 3 + 1];
-    const bottomY = params.holeAtTop ? innerTopY + standHeightMm : innerTopY - standHeightMm;
+    const baseTopY = pos.getY(baseRow);
+    const topY = baseTopY;
+    const bottomY = params.holeAtTop ? topY + standHeightMm : topY - standHeightMm;
 
     const innerBottomStart = vertexCount * 2;
     const outerBottomStart = innerBottomStart + rowVerts;
@@ -156,8 +165,9 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
       const oBot = outerBottomStart + col;
       const oTop = outerTopStart + col;
 
-      const ix = innerPositions[iTop * 3 + 0];
-      const iz = innerPositions[iTop * 3 + 2];
+      // Stand ring is defined from the base sphere ring so it matches the cut ring.
+      const ix = pos.getX(iTop);
+      const iz = pos.getZ(iTop);
 
       // Inner ring at bottom plane (keeps the hole open through the stand).
       positions[iBot * 3 + 0] = ix;
@@ -173,7 +183,7 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
 
       // Outer ring at top plane (cut plane).
       positions[oTop * 3 + 0] = ox;
-      positions[oTop * 3 + 1] = innerTopY;
+      positions[oTop * 3 + 1] = topY;
       positions[oTop * 3 + 2] = oz;
 
       // Outer ring at bottom plane.

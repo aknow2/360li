@@ -154,6 +154,21 @@ export function Controls({
               </label>
 
               <label style={{ display: 'grid', gap: 6 }}>
+                <span>Thickness direction</span>
+                <select
+                  value={params?.thicknessDirection ?? 'outward'}
+                  onChange={(e) => {
+                    if (!params) return;
+                    const next = e.currentTarget.value === 'inward' ? 'inward' : 'outward';
+                    onChangeParams?.({ ...params, thicknessDirection: next });
+                  }}
+                >
+                  <option value="outward">Outward (add thickness outside)</option>
+                  <option value="inward">Inward (carve thickness inside)</option>
+                </select>
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span>Bottom hole diameter (mm)</span>
                 <input
                   type="number"

@@ -31,15 +31,19 @@ export function Viewer({ geometry, file = null, imageScale = 1, showTexture = tr
 
     const inner = new THREE.MeshStandardMaterial({
       color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.22,
       roughness: 0.9,
       metalness: 0,
-      side: THREE.BackSide,
+      side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.35,
     });
 
     const wall = new THREE.MeshStandardMaterial({
       color: 0xffffff,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.26,
       roughness: 0.9,
       metalness: 0,
       side: THREE.DoubleSide,
