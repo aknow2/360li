@@ -18,6 +18,17 @@ function clamp(x: number, min: number, max: number): number {
   return x;
 }
 
+function normalToImageUv(normal: THREE.Vector3): { u: number; v: number } {
+  const ny = clamp(normal.y, -1, 1);
+  const theta = Math.acos(ny);
+  let phi = Math.atan2(normal.z, -normal.x);
+  if (phi < 0) phi += Math.PI * 2;
+
+  const u = 1 - phi / (Math.PI * 2);
+  const v = 1 - theta / Math.PI;
+  return { u, v };
+}
+
 export function generateSphereLithophane(imageData: ImageData, params: LithophaneParams): GenerateResult {
   const sampler = createImageSampler(imageData);
 
@@ -41,7 +52,7 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
 
   // Optional bottom opening. We cut along a latitude band boundary (no triangle splitting)
   // so the opening diameter is an approximation based on mesh resolution.
-  // Backward compatibility: hole cut is defined on the base sphere.
+  // The hole is always constructed at the south pole, then rotated to the desired position.
   const holeRadius = clamp(params.holeDiameterMm / 2, 0, baseRadius);
   const holeEnabled = holeRadius > 0;
   // Note: SphereGeometry UVs use v=1 at the top (north pole) and v=0 at the bottom (south pole).
@@ -49,7 +60,7 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
   // r = R * sin(alpha) where alpha is the angle up from the bottom pole.
   // In SphereGeometry's UV convention, v = alpha / PI.
   const alpha = holeEnabled ? Math.asin(clamp(holeRadius / baseRadius, 0, 1)) / Math.PI : 0;
-  const desiredV = holeEnabled ? (params.holeAtTop ? 1 - alpha : alpha) : 0;
+  const desiredV = holeEnabled ? alpha : 0;
   // Convert v (texture space) to a mesh row index (iy): v = 1 - iy/heightSegments.
   const ringRow = holeEnabled
     ? Math.max(0, Math.min(params.heightSegments - 1, Math.floor((1 - desiredV) * params.heightSegments)))
@@ -74,18 +85,28 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
   const totalVertexCount = vertexCount * 2 + extraRingVerts;
   const uvs = new Float32Array(totalVertexCount * 2);
 
+  const holeLat = params.holeLatitude ?? 0;
+  const holeLon = params.holeLongitude ?? 0;
+  const tiltAngle = (holeLat / 100) * Math.PI;
+  const spinAngle = (holeLon / 100) * Math.PI * 2;
+  const holeRotation = new THREE.Matrix4()
+    .makeRotationY(spinAngle)
+    .multiply(new THREE.Matrix4().makeRotationX(tiltAngle));
+  const hasHoleRotation = holeLat !== 0 || holeLon !== 0;
+
   const normal = new THREE.Vector3();
+  const mappedNormal = new THREE.Vector3();
 
   for (let i = 0; i < vertexCount; i++) {
     normal.fromBufferAttribute(pos, i).normalize();
 
-    // SphereGeometry UVs are not guaranteed to match the uploaded panorama's orientation.
-    // Our sampler interprets u=0 as left edge and v=0 as top edge (image-space).
-    // Map SphereGeometry UVs into image-space so relief and preview texture match.
-    const uRaw = uv.getX(i);
-    const vRaw = uv.getY(i);
-    const u = 1 - uRaw;
-    const v = 1 - vRaw;
+    // Keep the image fixed while moving the hole:
+    // sample using the post-rotation direction so texture/relief orientation stays unchanged.
+    mappedNormal.copy(normal);
+    if (hasHoleRotation) {
+      mappedNormal.applyMatrix4(holeRotation).normalize();
+    }
+    const { u, v } = normalToImageUv(mappedNormal);
     const brightness = sampler.sampleBrightness(u, v);
 
     const baseThickness = brightnessToThicknessMm(brightness, params);
@@ -131,13 +152,8 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
       const av = uv.getY(a);
       const bv = uv.getY(b);
       const cv = uv.getY(c);
-      if (params.holeAtTop) {
-        // Remove any triangles that go above the cut ring (toward the top where v is larger).
-        if (av > ringV || bv > ringV || cv > ringV) continue;
-      } else {
-        // Remove any triangles that dip below the cut ring (toward the bottom where v is smaller).
-        if (av < ringV || bv < ringV || cv < ringV) continue;
-      }
+      // Always cut at the bottom (south pole). Rotation is applied afterwards.
+      if (av < ringV || bv < ringV || cv < ringV) continue;
     }
 
     // Outer faces keep original winding.
@@ -153,7 +169,7 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
     // Create bottom ring vertices (planar bottom Y for stability).
     const baseTopY = pos.getY(baseRow);
     const topY = baseTopY;
-    const bottomY = params.holeAtTop ? topY + standHeightMm : topY - standHeightMm;
+    const bottomY = topY - standHeightMm;
 
     const innerBottomStart = vertexCount * 2;
     const outerBottomStart = innerBottomStart + rowVerts;
@@ -191,9 +207,9 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
       positions[oBot * 3 + 1] = bottomY;
       positions[oBot * 3 + 2] = oz;
 
-      // Reuse UVs from the corresponding top ring vertices.
-      const u = 1 - uv.getX(iTop);
-      const v = 1 - uv.getY(iTop);
+      // Reuse mapped UVs from the corresponding top ring vertices.
+      const u = uvs[iTop * 2 + 0];
+      const v = uvs[iTop * 2 + 1];
       uvs[iBot * 2 + 0] = u;
       uvs[iBot * 2 + 1] = v;
       uvs[oBot * 2 + 0] = u;
@@ -240,7 +256,7 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
       wallAndStand.push(oTop0, oBot1, oBot0);
     }
 
-    const capFacesUp = params.holeAtTop;
+    const capFacesUp = false; // Hole is always at the bottom before rotation.
 
     // Inner wall of the stand (faces inward) by extruding the inner ring to the bottom.
     for (let col = 0; col < params.widthSegments; col++) {
@@ -289,6 +305,11 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
   if (keptOuter.length > 0) combined.addGroup(0, keptOuter.length, 0);
   if (keptInner.length > 0) combined.addGroup(keptOuter.length, keptInner.length, 1);
   if (wallAndStand.length > 0) combined.addGroup(keptOuter.length + keptInner.length, wallAndStand.length, 2);
+
+  // Rotate geometry to move the hole location without rotating sampled image orientation.
+  if (hasHoleRotation) {
+    combined.applyMatrix4(holeRotation);
+  }
 
   combined.computeVertexNormals();
 

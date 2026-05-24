@@ -8,11 +8,12 @@ type ViewerProps = {
   geometry: BufferGeometry | null;
   file?: File | null;
   imageScale?: number;
+  paddingMode?: 'pad' | 'stretch';
   showTexture?: boolean;
   placeholderText?: string;
 };
 
-export function Viewer({ geometry, file = null, imageScale = 1, showTexture = true, placeholderText = '3D preview will appear here.' }: ViewerProps) {
+export function Viewer({ geometry, file = null, imageScale = 1, paddingMode = 'pad', showTexture = true, placeholderText = '3D preview will appear here.' }: ViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
@@ -95,7 +96,7 @@ export function Viewer({ geometry, file = null, imageScale = 1, showTexture = tr
         return;
       }
 
-      const key = `${nextFile.name}:${nextFile.size}:${nextFile.lastModified}:${imageScale}`;
+      const key = `${nextFile.name}:${nextFile.size}:${nextFile.lastModified}:${imageScale}:${paddingMode}`;
       if (textureRef.current && textureKeyRef.current === key) {
         if (showTexture) {
           materials.outer.map = textureRef.current;
@@ -128,7 +129,7 @@ export function Viewer({ geometry, file = null, imageScale = 1, showTexture = tr
         const input = srcCtx.getImageData(0, 0, w, h);
 
         // Use the same working-image rules as generation (padding + imageScale).
-        const working = createWorkingImage(input, { imageScale });
+        const working = createWorkingImage(input, { imageScale, paddingMode });
 
         // Convert to grayscale for preview.
         const data = working.data;
@@ -173,7 +174,7 @@ export function Viewer({ geometry, file = null, imageScale = 1, showTexture = tr
     return () => {
       cancelled = true;
     };
-  }, [file, imageScale, showTexture, materials]);
+  }, [file, imageScale, paddingMode, showTexture, materials]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

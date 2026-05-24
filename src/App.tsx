@@ -122,6 +122,7 @@ function App() {
             geometry={state.geometry}
             file={state.status === 'idle' ? null : state.file}
             imageScale={state.params.imageScale}
+            paddingMode={state.params.paddingMode}
             showTexture={showTexture}
             placeholderText={
               state.status === 'generating'

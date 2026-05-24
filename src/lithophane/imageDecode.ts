@@ -9,6 +9,7 @@ export type DecodedImage = {
 
 export type DecodeOptions = {
   imageScale?: number;
+  paddingMode?: 'pad' | 'stretch';
 };
 
 async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
@@ -74,6 +75,6 @@ export async function decodeImageToImageData(file: File, options: DecodeOptions 
   }
 
   // All images are converted into a 2:1 working image (white padding + optional imageScale).
-  const working = createWorkingImage(imageData, { imageScale: options.imageScale ?? 1 });
+  const working = createWorkingImage(imageData, { imageScale: options.imageScale ?? 1, paddingMode: options.paddingMode ?? 'pad' });
   return { imageData: working, width: working.width, height: working.height };
 }

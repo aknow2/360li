@@ -3,7 +3,8 @@ export type LithophaneParams = {
   minThicknessMm: number;
   maxThicknessMm: number;
   holeDiameterMm: number;
-  holeAtTop: boolean;
+  holeLatitude: number;
+  holeLongitude: number;
   standWallThicknessMm: number;
   widthSegments: number;
   heightSegments: number;
@@ -11,6 +12,7 @@ export type LithophaneParams = {
   brightnessCurve: number;
   minCos: number;
   imageScale: number;
+  paddingMode: 'pad' | 'stretch';
   thicknessDirection: 'outward' | 'inward';
 };
 
@@ -19,7 +21,8 @@ export const DEFAULT_PARAMS: LithophaneParams = {
   minThicknessMm: 2.8,
   maxThicknessMm: 5.5,
   holeDiameterMm: 0,
-  holeAtTop: false,
+  holeLatitude: 0,
+  holeLongitude: 0,
   standWallThicknessMm: 2,
   widthSegments: 256,
   heightSegments: 128,
@@ -27,5 +30,6 @@ export const DEFAULT_PARAMS: LithophaneParams = {
   brightnessCurve: 0.6,
   minCos: 1.00,
   imageScale: 1,
+  paddingMode: 'pad',
   thicknessDirection: 'outward',
 };

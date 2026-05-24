@@ -92,6 +92,28 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
+  if (!(params.holeLatitude >= 0 && params.holeLatitude <= 100)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'holeLatitude',
+        message: 'Hole latitude must be between 0 and 100.',
+      },
+    };
+  }
+
+  if (!(params.holeLongitude >= 0 && params.holeLongitude <= 100)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'holeLongitude',
+        message: 'Hole longitude must be between 0 and 100.',
+      },
+    };
+  }
+
   if (!Number.isInteger(params.widthSegments) || params.widthSegments < 8) {
     return {
       ok: false,

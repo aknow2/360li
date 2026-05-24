@@ -190,16 +190,45 @@ export function Controls({
                 ) : null}
               </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Hole latitude (0%=bottom, 100%=top)</span>
                 <input
-                  type="checkbox"
-                  checked={Boolean(params?.holeAtTop)}
+                  type="number"
+                  step={1}
+                  min={0}
+                  max={100}
+                  value={params?.holeLatitude ?? 0}
                   onChange={(e) => {
                     if (!params) return;
-                    onChangeParams?.({ ...params, holeAtTop: e.currentTarget.checked });
+                    onChangeParams?.({
+                      ...params,
+                      holeLatitude: numberOr(params.holeLatitude, e.currentTarget.value),
+                    });
                   }}
                 />
-                <span>Place hole/stand at top</span>
+                {paramsErrorField === 'holeLatitude' ? (
+                  <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
+                    {paramsErrorMessage}
+                  </div>
+                ) : null}
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Hole longitude (0%–100%)</span>
+                <input
+                  type="number"
+                  step={1}
+                  min={0}
+                  max={100}
+                  value={params?.holeLongitude ?? 0}
+                  onChange={(e) => {
+                    if (!params) return;
+                    onChangeParams?.({
+                      ...params,
+                      holeLongitude: numberOr(params.holeLongitude, e.currentTarget.value),
+                    });
+                  }}
+                />
               </label>
 
               <label style={{ display: 'grid', gap: 6 }}>
@@ -289,6 +318,21 @@ export function Controls({
                     {paramsErrorMessage}
                   </div>
                 ) : null}
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Padding mode</span>
+                <select
+                  value={params?.paddingMode ?? 'pad'}
+                  onChange={(e) => {
+                    if (!params) return;
+                    const next = e.currentTarget.value === 'stretch' ? 'stretch' : 'pad';
+                    onChangeParams?.({ ...params, paddingMode: next });
+                  }}
+                >
+                  <option value="pad">Pad (white fill)</option>
+                  <option value="stretch">Stretch</option>
+                </select>
               </label>
 
               <label style={{ display: 'grid', gap: 6 }}>

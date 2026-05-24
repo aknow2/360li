@@ -4,21 +4,16 @@ N=24;
 
 
 module stall(){
-    path = circle(r=55, $fn=N);
+    path = circle(r=60, $fn=N);
 theta = lerpn(0,360,N,endpoint=false);
 scale = [for(t=theta) sin(8*t)/5+1.2];
     
-difference() {
 path_sweep(circle(r=20, $fn=6), path3d(path), closed=true, scale=scale);
-
-
-
-}
 
 rotate([0,0,20])
 translate([0,0,-8]) {
    
-path = circle(r=50, $fn=N);
+path = circle(r=55, $fn=N);
 theta = lerpn(0,360,N,endpoint=false);
 scale = [for(t=theta) sin(8*t)/5+1];
 
@@ -27,7 +22,9 @@ path_sweep(circle(r=20, $fn=6), path3d(path), closed=true, scale=scale);
 
 }
 }
-
+translate([0,0,-26])
+scale([1,1,1/3])
+cylinder(r=65,h=20, center=true);
 
 }
 
@@ -35,27 +32,24 @@ path_sweep(circle(r=20, $fn=6), path3d(path), closed=true, scale=scale);
 
 translate([0,0,20])
 difference(){
-torus(r_maj=42, r_min=12);
+torus(r_maj=52, r_min=12);
 
 }
+
 
 difference(){
  stall();
 count =360;
 
-translate([0,0,-20])
-for(i= [0:4:count]){
-    rotate([0,0,i])
-    translate([65,0,sin(20*i)*8])
-rotate([0,-60,0])
-cylinder(d=2,h=80,center=true,$fn=6);
-}
 
-cylinder(d=80,h=200,center=true,$fn=6);
-     translate([0,0,-30])
+
+cylinder(d=90,h=200,center=true,$fn=128);
+     translate([0,0,-22])
  rotate([90,0,0])
 
-    cylinder(r=20,h=200, $fn=6);
+    cylinder(r=30,h=200, $fn=6);
+
+
 }
 
 

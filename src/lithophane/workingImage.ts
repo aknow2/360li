@@ -2,6 +2,7 @@ import type { AppError } from '../domain/errors';
 
 export type WorkingImageOptions = {
   imageScale?: number;
+  paddingMode?: 'pad' | 'stretch';
   maxWorkingPixels?: number;
 };
 
@@ -34,6 +35,7 @@ function computeWorkingCanvasSize(width: number, height: number): { width: numbe
 export function createWorkingImage(input: ImageData, options: WorkingImageOptions = {}): ImageData {
   const imageScaleRaw = options.imageScale ?? 1;
   const imageScale = clamp(imageScaleRaw, 0, 1);
+  const paddingMode = options.paddingMode ?? 'pad';
 
   const maxWorkingPixels = options.maxWorkingPixels ?? 8_000_000;
 
@@ -64,8 +66,11 @@ export function createWorkingImage(input: ImageData, options: WorkingImageOption
   const drawWidth = Math.max(1, Math.floor(input.width * imageScale * workingScale));
   const drawHeight = Math.max(1, Math.floor(input.height * imageScale * workingScale));
 
-  const dx = Math.floor((outWidth - drawWidth) / 2);
-  const dy = Math.floor((outHeight - drawHeight) / 2);
+  // In stretch mode, fill the entire canvas; in pad mode, center the image.
+  const dx = paddingMode === 'stretch' ? 0 : Math.floor((outWidth - drawWidth) / 2);
+  const dy = paddingMode === 'stretch' ? 0 : Math.floor((outHeight - drawHeight) / 2);
+  const finalDrawWidth = paddingMode === 'stretch' ? outWidth : drawWidth;
+  const finalDrawHeight = paddingMode === 'stretch' ? outHeight : drawHeight;
 
   const srcCanvas = document.createElement('canvas');
   srcCanvas.width = input.width;
@@ -86,7 +91,7 @@ export function createWorkingImage(input: ImageData, options: WorkingImageOption
 
   outCtx.imageSmoothingEnabled = true;
   outCtx.imageSmoothingQuality = 'high';
-  outCtx.drawImage(srcCanvas, 0, 0, input.width, input.height, dx, dy, drawWidth, drawHeight);
+  outCtx.drawImage(srcCanvas, 0, 0, input.width, input.height, dx, dy, finalDrawWidth, finalDrawHeight);
 
   return outCtx.getImageData(0, 0, outWidth, outHeight);
 }

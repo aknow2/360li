@@ -9,7 +9,7 @@ export type GenerateOptions = {
 
 export async function generateFromFile(file: File, options: GenerateOptions = {}) {
   const params = options.params ?? DEFAULT_PARAMS;
-  const decoded = await decodeImageToImageData(file, { imageScale: params.imageScale });
+  const decoded = await decodeImageToImageData(file, { imageScale: params.imageScale, paddingMode: params.paddingMode });
   return generateSphereLithophane(decoded.imageData, params);
 }
 
