@@ -1,8 +1,25 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
+export type RotationAxis = 'x' | 'y' | 'z';
+
+export type AnimationSettings = {
+  enabled: boolean;
+  rotationSpeedDegPerSec: number;
+  rotationAxis: RotationAxis;
+  refreshRateHz: number;
+};
+
+export const defaultAnimationSettings: AnimationSettings = {
+  enabled: false,
+  rotationSpeedDegPerSec: 20,
+  rotationAxis: 'y',
+  refreshRateHz: 60,
+};
+
 export type SceneHandle = {
   setMesh(mesh: THREE.Mesh | null): void;
+  setAnimationSettings(next: AnimationSettings): void;
   resize(): void;
   dispose(): void;
 };
@@ -38,11 +55,26 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
   scene.add(cameraLight);
 
   let currentMesh: THREE.Mesh | null = null;
+  let animationSettings: AnimationSettings = { ...defaultAnimationSettings };
 
   function setMesh(mesh: THREE.Mesh | null) {
     if (currentMesh) scene.remove(currentMesh);
     currentMesh = mesh;
     if (currentMesh) scene.add(currentMesh);
+  }
+
+  function setAnimationSettings(next: AnimationSettings) {
+    const refreshRateHz = Math.min(240, Math.max(1, Math.round(next.refreshRateHz)));
+    const axis: RotationAxis = next.rotationAxis === 'x' || next.rotationAxis === 'z' ? next.rotationAxis : 'y';
+
+    animationSettings = {
+      enabled: Boolean(next.enabled),
+      rotationSpeedDegPerSec: Number.isFinite(next.rotationSpeedDegPerSec)
+        ? next.rotationSpeedDegPerSec
+        : defaultAnimationSettings.rotationSpeedDegPerSec,
+      rotationAxis: axis,
+      refreshRateHz,
+    };
   }
 
   function resize() {
@@ -56,15 +88,32 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
   }
 
   let raf = 0;
-  function frame() {
+  let lastFrameMs = performance.now();
+  let lastRenderMs = 0;
+  function frame(nowMs: number) {
     raf = requestAnimationFrame(frame);
+
+    const deltaSec = Math.max(0, Math.min(0.1, (nowMs - lastFrameMs) / 1000));
+    lastFrameMs = nowMs;
+
+    if (animationSettings.enabled && currentMesh) {
+      const angle = THREE.MathUtils.degToRad(animationSettings.rotationSpeedDegPerSec) * deltaSec;
+      currentMesh.rotation[animationSettings.rotationAxis] += angle;
+    }
+
+    const minRenderIntervalMs = 1000 / Math.max(1, animationSettings.refreshRateHz);
+    if (lastRenderMs && nowMs - lastRenderMs < minRenderIntervalMs) {
+      return;
+    }
+    lastRenderMs = nowMs;
+
     controls.update();
     cameraLight.position.copy(camera.position);
     renderer.render(scene, camera);
   }
 
   resize();
-  frame();
+  raf = requestAnimationFrame(frame);
 
   function dispose() {
     cancelAnimationFrame(raf);
@@ -72,5 +121,5 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
     renderer.dispose();
   }
 
-  return { setMesh, resize, dispose };
+  return { setMesh, setAnimationSettings, resize, dispose };
 }

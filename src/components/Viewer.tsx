@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { BufferGeometry } from 'three';
-import { createScene, type SceneHandle } from '../three/scene';
+import { createScene, type AnimationSettings, type SceneHandle } from '../three/scene';
 import { createWorkingImage } from '../lithophane/workingImage';
 
 type ViewerProps = {
@@ -10,10 +10,11 @@ type ViewerProps = {
   imageScale?: number;
   paddingMode?: 'pad' | 'stretch';
   showTexture?: boolean;
+  animationSettings?: AnimationSettings;
   placeholderText?: string;
 };
 
-export function Viewer({ geometry, file = null, imageScale = 1, paddingMode = 'pad', showTexture = true, placeholderText = '3D preview will appear here.' }: ViewerProps) {
+export function Viewer({ geometry, file = null, imageScale = 1, paddingMode = 'pad', showTexture = true, animationSettings, placeholderText = '3D preview will appear here.' }: ViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
@@ -175,6 +176,11 @@ export function Viewer({ geometry, file = null, imageScale = 1, paddingMode = 'p
       cancelled = true;
     };
   }, [file, imageScale, paddingMode, showTexture, materials]);
+
+  useEffect(() => {
+    if (!animationSettings) return;
+    sceneRef.current?.setAnimationSettings(animationSettings);
+  }, [animationSettings]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

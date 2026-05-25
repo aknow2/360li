@@ -7,12 +7,14 @@ import { initialState, reducer } from './domain/state'
 import type { LithophaneParams } from './domain/params'
 import { validateParams } from './domain/validation'
 import { downloadBlob, exportGeometryToStlBlob } from './three/exporter'
+import { defaultAnimationSettings, type AnimationSettings } from './three/scene'
 
 function App() {
   const [state, dispatch] = useReducer(reducer, undefined, initialState)
   const runIdRef = useRef(0)
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null)
   const [showTexture, setShowTexture] = useState(true)
+  const [animationSettings, setAnimationSettings] = useState<AnimationSettings>(defaultAnimationSettings)
 
   async function runGeneration(file: File, params: LithophaneParams) {
     dispatch({ type: 'start_generate' })
@@ -114,6 +116,8 @@ function App() {
             exportEnabled={state.status === 'ready'}
             exportErrorMessage={exportErrorMessage}
             onExport={handleExport}
+            animationSettings={animationSettings}
+            onChangeAnimationSettings={setAnimationSettings}
           />
         </aside>
 
@@ -124,6 +128,7 @@ function App() {
             imageScale={state.params.imageScale}
             paddingMode={state.params.paddingMode}
             showTexture={showTexture}
+            animationSettings={animationSettings}
             placeholderText={
               state.status === 'generating'
                 ? 'Generating…'

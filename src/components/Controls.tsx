@@ -1,4 +1,5 @@
 import type { LithophaneParams } from '../domain/params';
+import type { AnimationSettings, RotationAxis } from '../three/scene';
 
 type ControlsProps = {
   disabled?: boolean;
@@ -17,6 +18,8 @@ type ControlsProps = {
   exportEnabled?: boolean;
   exportErrorMessage?: string | null;
   onExport?: () => void;
+  animationSettings?: AnimationSettings;
+  onChangeAnimationSettings?: (next: AnimationSettings) => void;
 };
 
 function numberOr(current: number, nextRaw: string): number {
@@ -46,6 +49,8 @@ export function Controls({
   exportEnabled,
   exportErrorMessage,
   onExport,
+  animationSettings,
+  onChangeAnimationSettings,
 }: ControlsProps) {
   return (
     <form aria-label="Lithophane controls">
@@ -73,6 +78,77 @@ export function Controls({
             />
             <span>Show grayscale texture</span>
           </label>
+
+          <fieldset style={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8, padding: 12 }}>
+            <legend style={{ padding: '0 6px', fontSize: 12, opacity: 0.85 }}>Animation</legend>
+
+            <div style={{ display: 'grid', gap: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(animationSettings?.enabled)}
+                  onChange={(e) => {
+                    if (!animationSettings) return;
+                    onChangeAnimationSettings?.({ ...animationSettings, enabled: e.currentTarget.checked });
+                  }}
+                />
+                <span>Enable animation mode</span>
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Rotation speed (deg/s): {Math.round(animationSettings?.rotationSpeedDegPerSec ?? 0)}</span>
+                <input
+                  type="range"
+                  min={-360}
+                  max={360}
+                  step={1}
+                  value={animationSettings?.rotationSpeedDegPerSec ?? 0}
+                  onChange={(e) => {
+                    if (!animationSettings) return;
+                    onChangeAnimationSettings?.({
+                      ...animationSettings,
+                      rotationSpeedDegPerSec: numberOr(animationSettings.rotationSpeedDegPerSec, e.currentTarget.value),
+                    });
+                  }}
+                />
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Rotation axis</span>
+                <select
+                  value={animationSettings?.rotationAxis ?? 'y'}
+                  onChange={(e) => {
+                    if (!animationSettings) return;
+                    const value = e.currentTarget.value;
+                    const axis: RotationAxis = value === 'x' || value === 'z' ? value : 'y';
+                    onChangeAnimationSettings?.({ ...animationSettings, rotationAxis: axis });
+                  }}
+                >
+                  <option value="x">X</option>
+                  <option value="y">Y</option>
+                  <option value="z">Z</option>
+                </select>
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Refresh rate (Hz): {Math.round(animationSettings?.refreshRateHz ?? 60)}</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={120}
+                  step={1}
+                  value={animationSettings?.refreshRateHz ?? 60}
+                  onChange={(e) => {
+                    if (!animationSettings) return;
+                    onChangeAnimationSettings?.({
+                      ...animationSettings,
+                      refreshRateHz: intOr(animationSettings.refreshRateHz, e.currentTarget.value),
+                    });
+                  }}
+                />
+              </label>
+            </div>
+          </fieldset>
 
           {errorMessage ? (
             <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
