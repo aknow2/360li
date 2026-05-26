@@ -9,6 +9,7 @@ export type LithophaneParameters = {
   minThicknessMm: number;
   maxThicknessMm: number;
   holeDiameterMm: number;
+  topHoleDiameterMm: number;
   widthSegments: number;
   heightSegments: number;
   brightnessCurve: number;

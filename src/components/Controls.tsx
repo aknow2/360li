@@ -267,6 +267,28 @@ export function Controls({
               </label>
 
               <label style={{ display: 'grid', gap: 6 }}>
+                <span>Top hole diameter (mm)</span>
+                <input
+                  type="number"
+                  step={1}
+                  min={0}
+                  value={params?.topHoleDiameterMm ?? ''}
+                  onChange={(e) => {
+                    if (!params) return;
+                    onChangeParams?.({
+                      ...params,
+                      topHoleDiameterMm: numberOr(params.topHoleDiameterMm, e.currentTarget.value),
+                    });
+                  }}
+                />
+                {paramsErrorField === 'topHoleDiameterMm' ? (
+                  <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
+                    {paramsErrorMessage}
+                  </div>
+                ) : null}
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
                 <span>Hole latitude (0%=bottom, 100%=top)</span>
                 <input
                   type="number"

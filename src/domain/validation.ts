@@ -69,6 +69,43 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
+  if (!(params.topHoleDiameterMm >= 0)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'topHoleDiameterMm',
+        message: 'Top hole diameter must be >= 0.',
+      },
+    };
+  }
+
+  if (params.topHoleDiameterMm > params.radiusMm * 2) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'topHoleDiameterMm',
+        message: 'Top hole diameter must be <= sphere diameter.',
+      },
+    };
+  }
+
+  if (params.holeDiameterMm > 0 && params.topHoleDiameterMm > 0) {
+    const bottomAngularRadius = Math.asin(Math.min(params.holeDiameterMm / 2 / params.radiusMm, 1));
+    const topAngularRadius = Math.asin(Math.min(params.topHoleDiameterMm / 2 / params.radiusMm, 1));
+    if (bottomAngularRadius + topAngularRadius >= Math.PI) {
+      return {
+        ok: false,
+        error: {
+          code: 'INVALID_PARAMS',
+          field: 'topHoleDiameterMm',
+          message: 'Top and bottom holes are too large to coexist.',
+        },
+      };
+    }
+  }
+
   if (!(params.standWallThicknessMm >= 0)) {
     return {
       ok: false,

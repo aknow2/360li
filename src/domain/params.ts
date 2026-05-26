@@ -3,6 +3,7 @@ export type LithophaneParams = {
   minThicknessMm: number;
   maxThicknessMm: number;
   holeDiameterMm: number;
+  topHoleDiameterMm: number;
   holeLatitude: number;
   holeLongitude: number;
   standWallThicknessMm: number;
@@ -21,6 +22,7 @@ export const DEFAULT_PARAMS: LithophaneParams = {
   minThicknessMm: 2.8,
   maxThicknessMm: 5.5,
   holeDiameterMm: 0,
+  topHoleDiameterMm: 0,
   holeLatitude: 0,
   holeLongitude: 0,
   standWallThicknessMm: 2,
