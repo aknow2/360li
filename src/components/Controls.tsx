@@ -1,5 +1,5 @@
 import type { LithophaneParams } from '../domain/params';
-import type { AnimationSettings, RotationAxis } from '../three/scene';
+import type { AnimationSettings, CenterLightSettings, RotationAxis } from '../three/scene';
 
 type ControlsProps = {
   disabled?: boolean;
@@ -20,6 +20,8 @@ type ControlsProps = {
   onExport?: () => void;
   animationSettings?: AnimationSettings;
   onChangeAnimationSettings?: (next: AnimationSettings) => void;
+  centerLightSettings?: CenterLightSettings;
+  onChangeCenterLightSettings?: (next: CenterLightSettings) => void;
 };
 
 function numberOr(current: number, nextRaw: string): number {
@@ -51,6 +53,8 @@ export function Controls({
   onExport,
   animationSettings,
   onChangeAnimationSettings,
+  centerLightSettings,
+  onChangeCenterLightSettings,
 }: ControlsProps) {
   return (
     <form aria-label="Lithophane controls">
@@ -78,6 +82,43 @@ export function Controls({
             />
             <span>Show grayscale texture</span>
           </label>
+
+          <fieldset style={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8, padding: 12 }}>
+            <legend style={{ padding: '0 6px', fontSize: 12, opacity: 0.85 }}>Lighting</legend>
+
+            <div style={{ display: 'grid', gap: 10 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(centerLightSettings?.enabled)}
+                  onChange={(e) => {
+                    if (!centerLightSettings) return;
+                    onChangeCenterLightSettings?.({ ...centerLightSettings, enabled: e.currentTarget.checked });
+                  }}
+                />
+                <span>Center 360 deg light</span>
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Center light intensity: {(centerLightSettings?.intensity ?? 0).toFixed(1)}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  step={0.1}
+                  disabled={!centerLightSettings?.enabled}
+                  value={centerLightSettings?.intensity ?? 0}
+                  onChange={(e) => {
+                    if (!centerLightSettings) return;
+                    onChangeCenterLightSettings?.({
+                      ...centerLightSettings,
+                      intensity: numberOr(centerLightSettings.intensity, e.currentTarget.value),
+                    });
+                  }}
+                />
+              </label>
+            </div>
+          </fieldset>
 
           <fieldset style={{ border: '1px solid rgba(0,0,0,0.12)', borderRadius: 8, padding: 12 }}>
             <legend style={{ padding: '0 6px', fontSize: 12, opacity: 0.85 }}>Animation</legend>
@@ -418,6 +459,30 @@ export function Controls({
                 ) : null}
               </label>
 
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(params?.flipHorizontal)}
+                  onChange={(e) => {
+                    if (!params) return;
+                    onChangeParams?.({ ...params, flipHorizontal: e.currentTarget.checked });
+                  }}
+                />
+                <span>Flip horizontal for build</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(params?.flipVertical)}
+                  onChange={(e) => {
+                    if (!params) return;
+                    onChangeParams?.({ ...params, flipVertical: e.currentTarget.checked });
+                  }}
+                />
+                <span>Flip vertical for build</span>
+              </label>
+
               <label style={{ display: 'grid', gap: 6 }}>
                 <span>Padding mode</span>
                 <select
@@ -458,6 +523,8 @@ export function Controls({
                 <input
                   type="number"
                   step={1}
+                  min={8}
+                  max={4096}
                   value={params?.widthSegments ?? ''}
                   onChange={(e) => {
                     if (!params) return;
@@ -479,6 +546,8 @@ export function Controls({
                 <input
                   type="number"
                   step={1}
+                  min={4}
+                  max={2048}
                   value={params?.heightSegments ?? ''}
                   onChange={(e) => {
                     if (!params) return;

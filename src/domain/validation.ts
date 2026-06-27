@@ -162,13 +162,13 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
-  if (params.widthSegments > 2048) {
+  if (params.widthSegments > 4096) {
     return {
       ok: false,
       error: {
         code: 'INVALID_PARAMS',
         field: 'widthSegments',
-        message: 'Width segments must be <= 2048.',
+        message: 'Width segments must be <= 4096.',
       },
     };
   }
@@ -184,13 +184,13 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
-  if (params.heightSegments > 1024) {
+  if (params.heightSegments > 2048) {
     return {
       ok: false,
       error: {
         code: 'INVALID_PARAMS',
         field: 'heightSegments',
-        message: 'Height segments must be <= 1024.',
+        message: 'Height segments must be <= 2048.',
       },
     };
   }

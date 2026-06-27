@@ -2,6 +2,8 @@ import type { AppError } from '../domain/errors';
 
 export type WorkingImageOptions = {
   imageScale?: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
   paddingMode?: 'pad' | 'stretch';
   maxWorkingPixels?: number;
 };
@@ -35,6 +37,8 @@ function computeWorkingCanvasSize(width: number, height: number): { width: numbe
 export function createWorkingImage(input: ImageData, options: WorkingImageOptions = {}): ImageData {
   const imageScaleRaw = options.imageScale ?? 1;
   const imageScale = clamp(imageScaleRaw, 0, 1);
+  const flipHorizontal = Boolean(options.flipHorizontal);
+  const flipVertical = Boolean(options.flipVertical);
   const paddingMode = options.paddingMode ?? 'pad';
 
   const maxWorkingPixels = options.maxWorkingPixels ?? 8_000_000;
@@ -91,7 +95,22 @@ export function createWorkingImage(input: ImageData, options: WorkingImageOption
 
   outCtx.imageSmoothingEnabled = true;
   outCtx.imageSmoothingQuality = 'high';
-  outCtx.drawImage(srcCanvas, 0, 0, input.width, input.height, dx, dy, finalDrawWidth, finalDrawHeight);
+  outCtx.save();
+  if (flipHorizontal || flipVertical) {
+    outCtx.scale(flipHorizontal ? -1 : 1, flipVertical ? -1 : 1);
+  }
+  outCtx.drawImage(
+    srcCanvas,
+    0,
+    0,
+    input.width,
+    input.height,
+    flipHorizontal ? -(dx + finalDrawWidth) : dx,
+    flipVertical ? -(dy + finalDrawHeight) : dy,
+    finalDrawWidth,
+    finalDrawHeight,
+  );
+  outCtx.restore();
 
   return outCtx.getImageData(0, 0, outWidth, outHeight);
 }

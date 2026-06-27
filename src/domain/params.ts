@@ -13,6 +13,8 @@ export type LithophaneParams = {
   brightnessCurve: number;
   minCos: number;
   imageScale: number;
+  flipHorizontal: boolean;
+  flipVertical: boolean;
   paddingMode: 'pad' | 'stretch';
   thicknessDirection: 'outward' | 'inward';
 };
@@ -32,6 +34,8 @@ export const DEFAULT_PARAMS: LithophaneParams = {
   brightnessCurve: 0.6,
   minCos: 1.00,
   imageScale: 1,
+  flipHorizontal: false,
+  flipVertical: false,
   paddingMode: 'pad',
   thicknessDirection: 'outward',
 };

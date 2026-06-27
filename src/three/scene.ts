@@ -10,6 +10,11 @@ export type AnimationSettings = {
   refreshRateHz: number;
 };
 
+export type CenterLightSettings = {
+  enabled: boolean;
+  intensity: number;
+};
+
 export const defaultAnimationSettings: AnimationSettings = {
   enabled: false,
   rotationSpeedDegPerSec: 20,
@@ -17,9 +22,15 @@ export const defaultAnimationSettings: AnimationSettings = {
   refreshRateHz: 60,
 };
 
+export const defaultCenterLightSettings: CenterLightSettings = {
+  enabled: false,
+  intensity: 4,
+};
+
 export type SceneHandle = {
   setMesh(mesh: THREE.Mesh | null): void;
   setAnimationSettings(next: AnimationSettings): void;
+  setCenterLightSettings(next: CenterLightSettings): void;
   resize(): void;
   dispose(): void;
 };
@@ -54,6 +65,11 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
   const cameraLight = new THREE.PointLight(0xffffff, 0.6, 0, 2);
   scene.add(cameraLight);
 
+  const centerLight = new THREE.PointLight(0xffffff, 0, 0, 0);
+  centerLight.position.set(0, 0, 0);
+  centerLight.visible = false;
+  scene.add(centerLight);
+
   let currentMesh: THREE.Mesh | null = null;
   let animationSettings: AnimationSettings = { ...defaultAnimationSettings };
 
@@ -75,6 +91,15 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
       rotationAxis: axis,
       refreshRateHz,
     };
+  }
+
+  function setCenterLightSettings(next: CenterLightSettings) {
+    const intensity = Number.isFinite(next.intensity)
+      ? Math.max(0, Math.min(100, next.intensity))
+      : defaultCenterLightSettings.intensity;
+
+    centerLight.intensity = intensity;
+    centerLight.visible = Boolean(next.enabled) && intensity > 0;
   }
 
   function resize() {
@@ -121,5 +146,5 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
     renderer.dispose();
   }
 
-  return { setMesh, setAnimationSettings, resize, dispose };
+  return { setMesh, setAnimationSettings, setCenterLightSettings, resize, dispose };
 }

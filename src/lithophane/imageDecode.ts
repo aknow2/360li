@@ -9,6 +9,8 @@ export type DecodedImage = {
 
 export type DecodeOptions = {
   imageScale?: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
   paddingMode?: 'pad' | 'stretch';
 };
 
@@ -75,6 +77,11 @@ export async function decodeImageToImageData(file: File, options: DecodeOptions 
   }
 
   // All images are converted into a 2:1 working image (white padding + optional imageScale).
-  const working = createWorkingImage(imageData, { imageScale: options.imageScale ?? 1, paddingMode: options.paddingMode ?? 'pad' });
+  const working = createWorkingImage(imageData, {
+    imageScale: options.imageScale ?? 1,
+    flipHorizontal: options.flipHorizontal ?? false,
+    flipVertical: options.flipVertical ?? false,
+    paddingMode: options.paddingMode ?? 'pad',
+  });
   return { imageData: working, width: working.width, height: working.height };
 }

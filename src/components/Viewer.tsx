@@ -1,20 +1,23 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import type { BufferGeometry } from 'three';
-import { createScene, type AnimationSettings, type SceneHandle } from '../three/scene';
+import { createScene, type AnimationSettings, type CenterLightSettings, type SceneHandle } from '../three/scene';
 import { createWorkingImage } from '../lithophane/workingImage';
 
 type ViewerProps = {
   geometry: BufferGeometry | null;
   file?: File | null;
   imageScale?: number;
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
   paddingMode?: 'pad' | 'stretch';
   showTexture?: boolean;
   animationSettings?: AnimationSettings;
+  centerLightSettings?: CenterLightSettings;
   placeholderText?: string;
 };
 
-export function Viewer({ geometry, file = null, imageScale = 1, paddingMode = 'pad', showTexture = true, animationSettings, placeholderText = '3D preview will appear here.' }: ViewerProps) {
+export function Viewer({ geometry, file = null, imageScale = 1, flipHorizontal = false, flipVertical = false, paddingMode = 'pad', showTexture = true, animationSettings, centerLightSettings, placeholderText = '3D preview will appear here.' }: ViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<SceneHandle | null>(null);
   const meshRef = useRef<THREE.Mesh | null>(null);
@@ -97,7 +100,7 @@ export function Viewer({ geometry, file = null, imageScale = 1, paddingMode = 'p
         return;
       }
 
-      const key = `${nextFile.name}:${nextFile.size}:${nextFile.lastModified}:${imageScale}:${paddingMode}`;
+      const key = `${nextFile.name}:${nextFile.size}:${nextFile.lastModified}:${imageScale}:${flipHorizontal}:${flipVertical}:${paddingMode}`;
       if (textureRef.current && textureKeyRef.current === key) {
         if (showTexture) {
           materials.outer.map = textureRef.current;
@@ -130,7 +133,7 @@ export function Viewer({ geometry, file = null, imageScale = 1, paddingMode = 'p
         const input = srcCtx.getImageData(0, 0, w, h);
 
         // Use the same working-image rules as generation (padding + imageScale).
-        const working = createWorkingImage(input, { imageScale, paddingMode });
+        const working = createWorkingImage(input, { imageScale, flipHorizontal, flipVertical, paddingMode });
 
         // Convert to grayscale for preview.
         const data = working.data;
@@ -175,12 +178,7 @@ export function Viewer({ geometry, file = null, imageScale = 1, paddingMode = 'p
     return () => {
       cancelled = true;
     };
-  }, [file, imageScale, paddingMode, showTexture, materials]);
-
-  useEffect(() => {
-    if (!animationSettings) return;
-    sceneRef.current?.setAnimationSettings(animationSettings);
-  }, [animationSettings]);
+  }, [file, imageScale, flipHorizontal, flipVertical, paddingMode, showTexture, materials]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -188,6 +186,8 @@ export function Viewer({ geometry, file = null, imageScale = 1, paddingMode = 'p
 
     const handle = createScene(canvas);
     sceneRef.current = handle;
+    if (animationSettings) handle.setAnimationSettings(animationSettings);
+    if (centerLightSettings) handle.setCenterLightSettings(centerLightSettings);
 
     const onWindowResize = () => handle.resize();
     window.addEventListener('resize', onWindowResize);
@@ -204,7 +204,19 @@ export function Viewer({ geometry, file = null, imageScale = 1, paddingMode = 'p
       handle.dispose();
       sceneRef.current = null;
     };
+    // Apply initial scene-only settings before later prop changes update through dedicated effects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!animationSettings) return;
+    sceneRef.current?.setAnimationSettings(animationSettings);
+  }, [animationSettings]);
+
+  useEffect(() => {
+    if (!centerLightSettings) return;
+    sceneRef.current?.setCenterLightSettings(centerLightSettings);
+  }, [centerLightSettings]);
 
   useEffect(() => {
     const handle = sceneRef.current;
