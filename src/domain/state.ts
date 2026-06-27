@@ -62,12 +62,12 @@ export type AppAction =
   | { type: 'generation_error'; errorMessage: string }
   | { type: 'reset' };
 
-export function initialState(): AppState {
+export function initialState(params: LithophaneParams = DEFAULT_PARAMS, paramsError: ParamsValidationError = null): AppState {
   return {
     status: 'idle',
     file: null,
-    params: DEFAULT_PARAMS,
-    paramsError: null,
+    params,
+    paramsError,
     geometry: null,
     summary: null,
     errorMessage: null,

@@ -35,6 +35,18 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
+  // For inward-thickness mode, ensure the inner surface never crosses the center.
+  if (params.thicknessDirection === 'inward' && !(params.maxThicknessMm < params.radiusMm)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'maxThicknessMm',
+        message: 'Max thickness must be < radius when thickness direction is inward.',
+      },
+    };
+  }
+
   if (!(params.holeDiameterMm >= 0)) {
     return {
       ok: false,
@@ -55,6 +67,43 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
         message: 'Hole diameter must be <= sphere diameter.',
       },
     };
+  }
+
+  if (!(params.topHoleDiameterMm >= 0)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'topHoleDiameterMm',
+        message: 'Top hole diameter must be >= 0.',
+      },
+    };
+  }
+
+  if (params.topHoleDiameterMm > params.radiusMm * 2) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'topHoleDiameterMm',
+        message: 'Top hole diameter must be <= sphere diameter.',
+      },
+    };
+  }
+
+  if (params.holeDiameterMm > 0 && params.topHoleDiameterMm > 0) {
+    const bottomAngularRadius = Math.asin(Math.min(params.holeDiameterMm / 2 / params.radiusMm, 1));
+    const topAngularRadius = Math.asin(Math.min(params.topHoleDiameterMm / 2 / params.radiusMm, 1));
+    if (bottomAngularRadius + topAngularRadius >= Math.PI) {
+      return {
+        ok: false,
+        error: {
+          code: 'INVALID_PARAMS',
+          field: 'topHoleDiameterMm',
+          message: 'Top and bottom holes are too large to coexist.',
+        },
+      };
+    }
   }
 
   if (!(params.standWallThicknessMm >= 0)) {
@@ -80,6 +129,28 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
+  if (!(params.holeLatitude >= 0 && params.holeLatitude <= 100)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'holeLatitude',
+        message: 'Hole latitude must be between 0 and 100.',
+      },
+    };
+  }
+
+  if (!(params.holeLongitude >= 0 && params.holeLongitude <= 100)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'holeLongitude',
+        message: 'Hole longitude must be between 0 and 100.',
+      },
+    };
+  }
+
   if (!Number.isInteger(params.widthSegments) || params.widthSegments < 8) {
     return {
       ok: false,
@@ -91,13 +162,13 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
-  if (params.widthSegments > 2048) {
+  if (params.widthSegments > 4096) {
     return {
       ok: false,
       error: {
         code: 'INVALID_PARAMS',
         field: 'widthSegments',
-        message: 'Width segments must be <= 2048.',
+        message: 'Width segments must be <= 4096.',
       },
     };
   }
@@ -113,13 +184,13 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
     };
   }
 
-  if (params.heightSegments > 1024) {
+  if (params.heightSegments > 2048) {
     return {
       ok: false,
       error: {
         code: 'INVALID_PARAMS',
         field: 'heightSegments',
-        message: 'Height segments must be <= 1024.',
+        message: 'Height segments must be <= 2048.',
       },
     };
   }
@@ -153,6 +224,17 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
         code: 'INVALID_PARAMS',
         field: 'minCos',
         message: 'minCos must be between 0 and 1.',
+      },
+    };
+  }
+
+  if (!(params.imageScale > 0 && params.imageScale <= 1)) {
+    return {
+      ok: false,
+      error: {
+        code: 'INVALID_PARAMS',
+        field: 'imageScale',
+        message: 'Image scale must be > 0 and <= 1.',
       },
     };
   }

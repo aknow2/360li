@@ -1,18 +1,39 @@
-import { useReducer, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import './App.css'
 import { Controls } from './components/Controls'
 import { Viewer } from './components/Viewer'
 import { generateFromFile, toGenerateErrorMessage } from './domain/generate'
 import { initialState, reducer } from './domain/state'
 import type { LithophaneParams } from './domain/params'
+import { loadPreferences, savePreferences } from './domain/preferences'
 import { validateParams } from './domain/validation'
 import { downloadBlob, exportGeometryToStlBlob } from './three/exporter'
+import type { AnimationSettings, CenterLightSettings } from './three/scene'
 
 function App() {
-  const [state, dispatch] = useReducer(reducer, undefined, initialState)
+  const [state, dispatch] = useReducer(reducer, undefined, () => {
+    const preferences = loadPreferences()
+    const v = validateParams(preferences.params)
+    return initialState(preferences.params, v.ok ? null : { field: v.error.field, message: v.error.message })
+  })
   const runIdRef = useRef(0)
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null)
-  const [showTexture, setShowTexture] = useState(true)
+  const [showTexture, setShowTexture] = useState(() => loadPreferences().showTexture)
+  const [animationSettings, setAnimationSettings] = useState<AnimationSettings>(
+    () => loadPreferences().animationSettings,
+  )
+  const [centerLightSettings, setCenterLightSettings] = useState<CenterLightSettings>(
+    () => loadPreferences().centerLightSettings,
+  )
+
+  useEffect(() => {
+    savePreferences({
+      params: state.params,
+      showTexture,
+      animationSettings,
+      centerLightSettings,
+    })
+  }, [animationSettings, centerLightSettings, showTexture, state.params])
 
   async function runGeneration(file: File, params: LithophaneParams) {
     dispatch({ type: 'start_generate' })
@@ -114,6 +135,10 @@ function App() {
             exportEnabled={state.status === 'ready'}
             exportErrorMessage={exportErrorMessage}
             onExport={handleExport}
+            animationSettings={animationSettings}
+            onChangeAnimationSettings={setAnimationSettings}
+            centerLightSettings={centerLightSettings}
+            onChangeCenterLightSettings={setCenterLightSettings}
           />
         </aside>
 
@@ -121,7 +146,13 @@ function App() {
           <Viewer
             geometry={state.geometry}
             file={state.status === 'idle' ? null : state.file}
+            imageScale={state.params.imageScale}
+            flipHorizontal={state.params.flipHorizontal}
+            flipVertical={state.params.flipVertical}
+            paddingMode={state.params.paddingMode}
             showTexture={showTexture}
+            animationSettings={animationSettings}
+            centerLightSettings={centerLightSettings}
             placeholderText={
               state.status === 'generating'
                 ? 'Generating…'

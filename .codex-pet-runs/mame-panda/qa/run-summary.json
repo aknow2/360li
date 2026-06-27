@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "run_dir": "/Users/tomoakiipodkanayama/aknow2/360li/.codex-pet-runs/mame-panda",
+  "spritesheet": "/Users/tomoakiipodkanayama/aknow2/360li/.codex-pet-runs/mame-panda/final/spritesheet.webp",
+  "validation": "/Users/tomoakiipodkanayama/aknow2/360li/.codex-pet-runs/mame-panda/final/validation.json",
+  "contact_sheet": "/Users/tomoakiipodkanayama/aknow2/360li/.codex-pet-runs/mame-panda/qa/contact-sheet.png",
+  "review": "/Users/tomoakiipodkanayama/aknow2/360li/.codex-pet-runs/mame-panda/qa/review.json",
+  "package": "/Users/tomoakiipodkanayama/.codex/pets/mame-panda"
+}
