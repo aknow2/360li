@@ -154,7 +154,7 @@ Commit boundary: Phase 3 only. Prerequisites: reviewed Phase 2.
 
 Commit boundary: Phase 4 only. Prerequisites: reviewed Phase 3.
 
-- [ ] **T4.1 — Build the unrotated conforming shell/hole/stand tetra complex**
+- [x] **T4.1 — Build the unrotated conforming shell/hole/stand tetra complex**
   - Prerequisites: T2.1, T3.3.
   - Target files: `src/lithophane/partSolid.ts`, `src/lithophane/sphereLithophane.ts`, `tests/integration/spherePartGeometry.test.ts`.
   - Unit of work: replace both contradicted stand joins with the reviewed split-path-only collar / taper / tube construction. Keep sampled shell cut-ring `I/O` exact; compute `theta`, `s`, `y0`, `delta`, `halfDelta`, every actual `tau_k`, `q`, clamped `w/h`, `tauMin`, `j`, `Yradial`, `YcutMin`, `Yc`, `Ys`, and `Yb` in Float64 from frozen Build data and canonical all-`W` order. Create canonical modulo-`W` `CI/CO`, `SI/SO`, `BI/BO`; tetrahedralize the three disjoint annular layers with the mandated sector triangles and fixed 3-tetra staircase; preserve the open lumen and only the `BI/BO` annular bottom. Route only non-1×1 tuples here; exact public 1×1 must return through untouched legacy code before every split sample/scalar/allocation.

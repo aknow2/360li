@@ -4,6 +4,8 @@ import { createImageSampler } from './imageSampler';
 import { brightnessToThicknessMm } from './thickness';
 import { compensationFactor } from './compensation';
 import type { GenerationSummary } from '../domain/contracts';
+import { buildPartSolidComplex } from './partSolid';
+import { resolveSplitCell } from './splitCell';
 
 export type GenerateResult = {
   geometry: THREE.BufferGeometry;
@@ -65,7 +67,7 @@ function makeTopHoleCut(diameterMm: number, baseRadius: number, heightSegments: 
   return { enabled, radiusMm, ringRow, ringV };
 }
 
-export function generateSphereLithophane(imageData: ImageData, params: LithophaneParams): GenerateResult {
+function generateLegacySphereLithophane(imageData: ImageData, params: LithophaneParams): GenerateResult {
   const sampler = createImageSampler(imageData);
 
   const thicknessDirection = params.thicknessDirection ?? 'outward';
@@ -367,4 +369,22 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
       triangleCount: combinedIndexArray.length / 3,
     },
   };
+}
+
+export function generateSphereLithophane(imageData: ImageData, params: LithophaneParams): GenerateResult {
+  if (
+    params.horizontalSplitCount === 1 &&
+    params.verticalSplitCount === 1 &&
+    params.splitIndex === 1
+  ) {
+    return generateLegacySphereLithophane(imageData, params);
+  }
+
+  const cell = resolveSplitCell(params);
+  buildPartSolidComplex(imageData, params, cell);
+  const error = new Error(
+    'Split volume complex diagnostics completed, but Phase 5 clipping and extraction are not available yet.',
+  ) as Error & { code: 'GENERATION_FAILED' };
+  error.code = 'GENERATION_FAILED';
+  throw error;
 }
