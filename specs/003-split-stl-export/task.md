@@ -12,7 +12,7 @@
 
 Commit boundary: Phase 0 only. Prerequisites: none; this phase occurs before **any** production-source edit.
 
-- [ ] **T0.1 — Establish the dependency-free test project and module runner**
+- [x] **T0.1 — Establish the dependency-free test project and module runner**
   - Prerequisites: none.
   - Target files: `package.json`, `tsconfig.test.json`, `tests/vite-runner.test.mjs`.
   - Unit of work: add only `test` and `test:typecheck` scripts and a standalone Vite SSR `node:test` runner that loads sorted exported `registerTests(t)` modules; do not add dependencies or alter root tsconfig.
@@ -23,7 +23,7 @@ Commit boundary: Phase 0 only. Prerequisites: none; this phase occurs before **a
   - Definition of Done: Node built-ins plus installed Vite are the only test infrastructure; `tsconfig.test.json` extends `tsconfig.app.json`, has no `references`/`composite`, root `tsconfig.json` bytes are unchanged, and neither `package.json` dependency sections nor `package-lock.json` change.
   - Trace: FR-026, FR-034; AC-005, AC-008; MVP-015, MVP-018.
 
-- [ ] **T0.2 — Capture and lock immutable 1×1 legacy fixtures**
+- [x] **T0.2 — Capture and lock immutable 1×1 legacy fixtures**
   - Prerequisites: T0.1.
   - Target files: `tests/fixtures/legacy-1x1-geometry.json`, `tests/fixtures/legacy-1x1-outward.stl`, `tests/fixtures/legacy-1x1-holes-stand-inward.stl`, `tests/integration/exportParity.test.ts`.
   - Unit of work: before production edits, deterministically capture two synthetic ImageData baselines: default outward/no holes and inward/top+bottom holes/stand/nonzero rotation; store raw binary STL bytes and a geometry manifest with SHA-256 attribute/index bytes, index constructor, groups, and counts.
