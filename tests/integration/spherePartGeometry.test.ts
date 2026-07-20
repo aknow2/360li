@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import type { TestContext } from 'node:test';
+import * as THREE from 'three';
 import { DEFAULT_PARAMS, type LithophaneParams } from '../../src/domain/params';
 import { generateSphereLithophane } from '../../src/lithophane/sphereLithophane';
 import {
@@ -9,6 +10,9 @@ import {
   type DirectedFace,
 } from '../../src/lithophane/partSolid';
 import { resolveSplitCell } from '../../src/lithophane/splitCell';
+import { decodeImageToImageData } from '../../src/lithophane/imageDecode';
+import { generateFromSnapshot } from '../../src/domain/generate';
+import { createBuildSnapshot } from '../../src/domain/builtPart';
 
 type Point = readonly [number, number, number];
 type StandScalars = {
@@ -43,6 +47,24 @@ function image(width = 11, height = 7): ImageData {
     }
   }
   return { width, height, data } as ImageData;
+}
+
+function flatImage(value = 127, width = 8, height = 4): ImageData {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let offset = 0; offset < data.length; offset += 4) {
+    data[offset] = value;
+    data[offset + 1] = value;
+    data[offset + 2] = value;
+    data[offset + 3] = 255;
+  }
+  return { width, height, data } as ImageData;
+}
+
+function normalToImageUv(direction: THREE.Vector3): { u: number; v: number } {
+  const theta = Math.acos(Math.max(-1, Math.min(1, direction.y)));
+  let phi = Math.atan2(direction.z, -direction.x);
+  if (phi < 0) phi += Math.PI * 2;
+  return { u: 1 - phi / (Math.PI * 2), v: 1 - theta / Math.PI };
 }
 
 function params(overrides: Partial<LithophaneParams> = {}): LithophaneParams {
@@ -400,7 +422,177 @@ export async function registerTests(t: TestContext): Promise<void> {
     }
   });
 
-  await t.test('seam/poles remain canonical and public split route stays Phase-5 fail-closed', () => {
+  await t.test('public split route emits the selected closed solid with deterministic groups, UVs, and summary', () => {
+    for (const [horizontalSplitCount, verticalSplitCount] of [[2, 2], [3, 2], [4, 3]] as const) {
+      const total = horizontalSplitCount * verticalSplitCount;
+      for (let splitIndex = 1; splitIndex <= total; splitIndex += 1) {
+        const p = params({
+          widthSegments: horizontalSplitCount === 3 ? 10 : 8,
+          heightSegments: verticalSplitCount === 3 ? 6 : 5,
+          horizontalSplitCount,
+          verticalSplitCount,
+          splitIndex,
+          holeDiameterMm: 0,
+        });
+        const first = generateSphereLithophane(image(), p);
+        const second = generateSphereLithophane(image(), p);
+        try {
+          const position = first.geometry.getAttribute('position');
+          const uv = first.geometry.getAttribute('uv');
+          const normal = first.geometry.getAttribute('normal');
+          const index = first.geometry.getIndex();
+          assert.ok(position && uv && normal && index);
+          assert.equal(first.summary.vertexCount, position.count);
+          assert.equal(first.summary.triangleCount, index.count / 3);
+          assert.deepEqual(first.geometry.groups, [
+            { start: 0, count: first.geometry.groups[0].count, materialIndex: 0 },
+            { start: first.geometry.groups[0].count, count: first.geometry.groups[1].count, materialIndex: 1 },
+            { start: first.geometry.groups[0].count + first.geometry.groups[1].count, count: first.geometry.groups[2].count, materialIndex: 2 },
+          ]);
+          assert.ok(Array.from(uv.array).every(Number.isFinite));
+          assert.deepEqual(position.array, second.geometry.getAttribute('position').array);
+          assert.deepEqual(index.array, second.geometry.getIndex()!.array);
+          assert.deepEqual(uv.array, second.geometry.getAttribute('uv').array);
+        } finally {
+          first.geometry.dispose();
+          second.geometry.dispose();
+        }
+      }
+    }
+  });
+
+  await t.test('public split route keeps exact source ownership and neighboring boundary coordinates', () => {
+    const base = params({ widthSegments: 10, heightSegments: 5, horizontalSplitCount: 3, verticalSplitCount: 2, holeDiameterMm: 0 });
+    const builds = Array.from({ length: 6 }, (_, index) => {
+      const p = { ...base, splitIndex: index + 1 };
+      const cell = resolveSplitCell(p);
+      const generated = generateSphereLithophane(image(), p);
+      return { cell, generated };
+    });
+    try {
+      for (const { cell, generated } of builds) {
+        const position = generated.geometry.getAttribute('position');
+        const selected = new THREE.Vector3();
+        for (let vertex = 0; vertex < position.count; vertex += 1) {
+          selected.fromBufferAttribute(position, vertex);
+          const radius = selected.length();
+          assert.ok(radius > 0 && Number.isFinite(radius));
+          const v = 1 - Math.acos(Math.max(-1, Math.min(1, selected.y / radius))) / Math.PI;
+          assert.ok(v >= cell.vMin - 1e-6 && v <= cell.vMax + 1e-6, `foreign V=${v} outside ${cell.vMin}:${cell.vMax}`);
+          if (Math.hypot(selected.x, selected.z) > 1e-5) {
+            let phi = Math.atan2(selected.z, -selected.x); if (phi < 0) phi += Math.PI * 2;
+            const u = 1 - phi / (Math.PI * 2);
+            const seamEquivalent = (cell.uMin === 0 && Math.abs(u - 1) < 1e-6)
+              || (cell.uMax === 1 && u < 1e-6);
+            assert.ok(seamEquivalent || (u >= cell.uMin - 1e-6 && u <= cell.uMax + 1e-6), `foreign U=${u} outside ${cell.uMin}:${cell.uMax}`);
+          }
+        }
+        assert.equal(cell.uSegments.count, cell.column <= 1 ? 4 : 3);
+        assert.equal(cell.vSegments.count, cell.row === 1 ? 3 : 2);
+      }
+      for (const [leftIndex, rightIndex] of [[0, 1], [1, 2], [3, 4], [4, 5]] as const) {
+        const left = builds[leftIndex].generated.geometry;
+        const right = builds[rightIndex].generated.geometry;
+        const boundary = builds[leftIndex].cell.uMax;
+        const coordinates = (geometry: THREE.BufferGeometry) => {
+          const values = geometry.getAttribute('position');
+          const found: string[] = [];
+          for (let i = 0; i < values.count; i += 1) {
+            const x = values.getX(i); const y = values.getY(i); const z = values.getZ(i);
+            let phi = Math.atan2(z, -x); if (phi < 0) phi += Math.PI * 2;
+            const u = 1 - phi / (Math.PI * 2);
+            if (Math.abs(u - boundary) < 1e-6 || (boundary === 1 && u < 1e-6)) found.push(`${x}:${y}:${z}`);
+          }
+          return [...new Set(found)].sort();
+        };
+        const leftBoundary = coordinates(left);
+        const rightBoundary = coordinates(right);
+        assert.ok(leftBoundary.length > 0 && rightBoundary.length > 0);
+        assert.deepEqual(leftBoundary, rightBoundary);
+      }
+    } finally {
+      for (const { generated } of builds) generated.geometry.dispose();
+    }
+  });
+
+  await t.test('public split rotation moves the complete closed solid exactly once and outer UVs use final direction', () => {
+    const localParams = params({
+      widthSegments: 8,
+      heightSegments: 6,
+      horizontalSplitCount: 2,
+      verticalSplitCount: 2,
+      splitIndex: 1,
+      thicknessDirection: 'outward',
+      holeDiameterMm: 30,
+      topHoleDiameterMm: 20,
+      standWallThicknessMm: 3,
+      holeLatitude: 0,
+      holeLongitude: 0,
+    });
+    const rotatedParams = { ...localParams, holeLatitude: 23, holeLongitude: 17 };
+    const local = generateSphereLithophane(flatImage(), localParams);
+    const rotated = generateSphereLithophane(flatImage(), rotatedParams);
+    try {
+      const expected = local.geometry.getAttribute('position').clone();
+      const rotation = new THREE.Matrix4()
+        .makeRotationY((rotatedParams.holeLongitude / 100) * Math.PI * 2)
+        .multiply(new THREE.Matrix4().makeRotationX((rotatedParams.holeLatitude / 100) * Math.PI));
+      expected.applyMatrix4(rotation);
+      assert.deepEqual(rotated.geometry.getAttribute('position').array, expected.array);
+      assert.deepEqual(rotated.geometry.getIndex()!.array, local.geometry.getIndex()!.array);
+      assert.deepEqual(rotated.geometry.groups, local.geometry.groups);
+
+      const outer = rotated.geometry.groups[0];
+      const indices = rotated.geometry.getIndex()!;
+      const positions = rotated.geometry.getAttribute('position');
+      const uvs = rotated.geometry.getAttribute('uv');
+      const checked = new Set<number>();
+      for (let offset = outer.start; offset < outer.start + outer.count; offset += 1) {
+        const vertex = indices.getX(offset);
+        if (checked.has(vertex)) continue;
+        checked.add(vertex);
+        const direction = new THREE.Vector3().fromBufferAttribute(positions, vertex).normalize();
+        const expectedUv = normalToImageUv(direction);
+        assert.ok(Math.abs(uvs.getX(vertex) - expectedUv.u) < 1e-6);
+        assert.ok(Math.abs(uvs.getY(vertex) - expectedUv.v) < 1e-6);
+      }
+      assert.ok(checked.size > 0);
+    } finally {
+      local.geometry.dispose();
+      rotated.geometry.dispose();
+    }
+  });
+
+  await t.test('independent one-segment public builds emit identical all-W stand layer coordinates', () => {
+    const base = params({ widthSegments: 8, heightSegments: 6, horizontalSplitCount: 8, verticalSplitCount: 1 });
+    const expectedComplex = build({ ...base, splitIndex: 1 });
+    const expectedY = stand(expectedComplex).scalars!;
+    const required = [expectedY.Yc, expectedY.Ys, expectedY.Yb].map(Math.fround);
+    const builds = Array.from({ length: 8 }, (_, index) => generateSphereLithophane(image(), { ...base, splitIndex: index + 1 }));
+    try {
+      for (const generated of builds) {
+        const values = generated.geometry.getAttribute('position');
+        const ys = new Set(Array.from({ length: values.count }, (_, vertex) => values.getY(vertex)));
+        for (const y of required) assert.ok(ys.has(y), `missing global stand Y=${y}`);
+      }
+    } finally {
+      for (const generated of builds) generated.geometry.dispose();
+    }
+  });
+
+  await t.test('public invalid selected result fails recoverably without returning partial geometry', () => {
+    let returned: ReturnType<typeof generateSphereLithophane> | null = null;
+    assert.throws(() => {
+      returned = generateSphereLithophane(image(), params({ minThicknessMm: 0, maxThicknessMm: 0 }));
+    }, (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.equal((error as Error & { code?: string }).code, 'GENERATION_FAILED');
+      return true;
+    });
+    assert.equal(returned, null);
+  });
+
+  await t.test('seam/poles remain canonical and public split route succeeds', () => {
     for (const splitIndex of [1, 16]) {
       const p = params({ widthSegments: 8, heightSegments: 2, horizontalSplitCount: 8, verticalSplitCount: 2, splitIndex, holeDiameterMm: 0 });
       const complex = build(p);
@@ -409,13 +601,8 @@ export async function registerTests(t: TestContext): Promise<void> {
         assert.equal(complex.canonicalIds.shell(layer, v, 0), complex.canonicalIds.shell(layer, v, p.widthSegments));
       }
     }
-    const split = params({ horizontalSplitCount: 2, verticalSplitCount: 1, splitIndex: 2 });
-    assert.throws(() => generateSphereLithophane(image(), split), (error: unknown) => {
-      assert.ok(error instanceof Error);
-      assert.equal((error as Error & { code?: string }).code, 'GENERATION_FAILED');
-      assert.match(error.message, /Phase 5|split/i);
-      return true;
-    });
+    const split = generateSphereLithophane(image(), params({ horizontalSplitCount: 2, verticalSplitCount: 1, splitIndex: 2 }));
+    try { assert.ok(split.summary.triangleCount > 0); } finally { split.geometry.dispose(); }
     const legacy = generateSphereLithophane(image(), {
       ...DEFAULT_PARAMS,
       holeDiameterMm: 30,
@@ -425,5 +612,45 @@ export async function registerTests(t: TestContext): Promise<void> {
       splitIndex: 1,
     });
     try { assert.ok(legacy.summary.triangleCount > 0); } finally { legacy.geometry.dispose(); }
+  });
+
+  await t.test('ImageBitmap closes exactly once when post-decode processing throws', async () => {
+    const originalWindow = globalThis.window;
+    const originalDocument = globalThis.document;
+    const originalCreateImageBitmap = globalThis.createImageBitmap;
+    let closes = 0;
+    const bitmap = { width: 2, height: 1, close: () => { closes += 1; } } as unknown as ImageBitmap;
+    Object.assign(globalThis, {
+      window: { createImageBitmap: true },
+      createImageBitmap: async () => bitmap,
+      document: { createElement: () => ({ width: 0, height: 0, getContext: () => null }) },
+    });
+    try {
+      await assert.rejects(
+        decodeImageToImageData(new File([new Uint8Array([1])], 'x.png', { type: 'image/png' })),
+        (error: unknown) => (error as { code?: string }).code === 'DECODE_FAILED',
+      );
+      assert.equal(closes, 1);
+    } finally {
+      Object.assign(globalThis, { window: originalWindow, document: originalDocument, createImageBitmap: originalCreateImageBitmap });
+    }
+  });
+
+  await t.test('post-generation publication failure disposes temporary geometry and returns no Built Part', async () => {
+    const snapshot = createBuildSnapshot(
+      new File([new Uint8Array([1])], 'x.png', { type: 'image/png' }),
+      params(),
+    );
+    let disposals = 0;
+    const geometry = new THREE.BufferGeometry();
+    geometry.addEventListener('dispose', () => { disposals += 1; });
+    await assert.rejects(generateFromSnapshot(snapshot, {
+      decode: async () => ({ imageData: image(), width: 11, height: 7 }),
+      generate: () => ({
+        geometry,
+        get summary(): never { throw new Error('summary failed'); },
+      }),
+    }));
+    assert.equal(disposals, 1);
   });
 }

@@ -50,17 +50,21 @@ export async function decodeImageToImageData(file: File, options: DecodeOptions 
   // Prefer createImageBitmap when available.
   if ('createImageBitmap' in window) {
     const bitmap = await createImageBitmap(file);
-    width = bitmap.width;
-    height = bitmap.height;
+    try {
+      width = bitmap.width;
+      height = bitmap.height;
 
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw { code: 'DECODE_FAILED', message: 'Canvas 2D context not available.' } satisfies AppError;
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw { code: 'DECODE_FAILED', message: 'Canvas 2D context not available.' } satisfies AppError;
 
-    ctx.drawImage(bitmap, 0, 0);
-    imageData = ctx.getImageData(0, 0, width, height);
+      ctx.drawImage(bitmap, 0, 0);
+      imageData = ctx.getImageData(0, 0, width, height);
+    } finally {
+      bitmap.close();
+    }
   } else {
     const img = await loadImageFromBlob(file);
     width = img.naturalWidth;

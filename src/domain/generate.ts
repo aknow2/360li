@@ -26,13 +26,18 @@ export async function generateFromSnapshot(
     paddingMode: params.paddingMode,
   });
   const generated = dependencies.generate(decoded.imageData, params);
-  return Object.freeze({
-    geometry: generated.geometry,
-    summary: generated.summary,
-    workingImage: decoded.imageData,
-    snapshot,
-    fileName: deriveStlFileName(params),
-  });
+  try {
+    return Object.freeze({
+      geometry: generated.geometry,
+      summary: generated.summary,
+      workingImage: decoded.imageData,
+      snapshot,
+      fileName: deriveStlFileName(params),
+    });
+  } catch (error) {
+    generated.geometry.dispose();
+    throw error;
+  }
 }
 
 export type GenerationRunCoordinator = Readonly<{

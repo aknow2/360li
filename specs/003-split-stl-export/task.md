@@ -216,7 +216,7 @@ Commit boundary: Phase 5 only. Prerequisites: reviewed Phase 4.
 
 Commit boundary: Phase 6 only. Prerequisites: reviewed Phase 5.
 
-- [ ] **T6.1 — Integrate selected-solid generation, rotation, image sampling, and atomic failure**
+- [x] **T6.1 — Integrate selected-solid generation, rotation, image sampling, and atomic failure**
   - Prerequisites: T5.1, T5.2, T3.3.
   - Target files: `src/lithophane/sphereLithophane.ts`, `src/domain/generate.ts`, `src/lithophane/imageDecode.ts`, `tests/integration/spherePartGeometry.test.ts`.
   - Unit of work: dispatch legacy versus split paths, preserve existing working-image sampling and final-direction image UV, rotate the completed solid exactly once, and surface empty/non-connected/resource failure atomically.
@@ -229,7 +229,7 @@ Commit boundary: Phase 6 only. Prerequisites: reviewed Phase 5.
   - Definition of Done: `R=Ry(spin)*Rx(tilt)` applies after local closure; image UV derives from final direction without per-part crop/rescale; decode closes ImageBitmap; only selected source sectors/bands become volume while the lightweight canonical all-W cut-ring sampling/reduction is deterministic; all scalar/ring/face temporaries release before Built Part publication.
   - Trace: FR-006, FR-015, FR-021..FR-023, FR-025, FR-032; AC-003, AC-004; SC-004, SC-005; MVP-009..MVP-014, MVP-016.
 
-- [ ] **T6.2 — Prove STL parity, no foreign triangles, and legacy compatibility**
+- [x] **T6.2 — Prove STL parity, no foreign triangles, and legacy compatibility**
   - Prerequisites: T6.1.
   - Target files: `tests/integration/exportParity.test.ts`, `tests/integration/spherePartGeometry.test.ts`, `tests/fixtures/legacy-1x1-geometry.json`, `tests/fixtures/legacy-1x1-outward.stl`, `tests/fixtures/legacy-1x1-holes-stand-inward.stl`.
   - Unit of work: extend fixture-only integration tests to parse binary STL and compare selected Built Part triangle coordinates/order/winding, foreign-part exclusion, and post-reparse boundary tolerance.
