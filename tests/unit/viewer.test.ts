@@ -15,7 +15,11 @@ import {
   type ViewerMaterials,
 } from '../../src/components/Viewer';
 import { decodeImageToImageData, type ImageDecodeDependencies } from '../../src/lithophane/imageDecode';
-import { createSceneResourceLifecycle, initializeSceneResourceLifecycle } from '../../src/three/scene';
+import {
+  createSceneFrameLoop,
+  createSceneResourceLifecycle,
+  initializeSceneResourceLifecycle,
+} from '../../src/three/scene';
 
 function hash(bytes: Uint8ClampedArray): string {
   return createHash('sha256').update(bytes).digest('hex');
@@ -268,6 +272,7 @@ export async function registerTests(t: TestContext): Promise<void> {
 
   await t.test('controller clones per Built Part identity; toggles/live drafts do not clone or reframe; cleanup never disposes sources', () => {
     const calls: string[] = [];
+    let invalidationCount = 0;
     const source = sourceImage();
     const beforeBytes = new Uint8ClampedArray(source.data);
     const beforeHash = hash(source.data);
@@ -280,6 +285,7 @@ export async function registerTests(t: TestContext): Promise<void> {
       resize() { calls.push('resize'); },
       fitCameraToBounds() { calls.push('fit'); },
       resetLegacyCameraFrame() { calls.push('reset'); },
+      invalidate() { invalidationCount += 1; },
     };
     const controller = createViewerPresentationController(scene, set, {
       cloneGeometry(geometry) {
@@ -305,6 +311,7 @@ export async function registerTests(t: TestContext): Promise<void> {
     assert.deepEqual(calls, presentationCalls);
     assert.equal(clones.length, 1);
     assert.equal(textureFixtureState.created.textures.length, 1);
+    assert.equal(invalidationCount, 3, 'every visible texture attach/detach explicitly invalidates the scene');
 
     controller.present(second);
     assert.equal(clones.length, 2);
@@ -576,7 +583,8 @@ export async function registerTests(t: TestContext): Promise<void> {
     const lifecycle = createSceneResourceLifecycle({
       requestFrame(callback) { const id = ++nextId; queued.set(id, callback); events.push(`request:${id}`); return id; },
       cancelFrame(id) { events.push(`cancel:${id}`); queued.delete(id); },
-      renderFrame() { events.push('render'); },
+      renderFrame() { events.push('render'); return true; },
+      removeInvalidationListeners() { events.push('controls:listener:remove'); },
       clearMesh() { events.push('mesh:null'); },
       disposeControls() { events.push('controls:dispose'); },
       disposeRenderer() { events.push('renderer:dispose'); },
@@ -589,10 +597,111 @@ export async function registerTests(t: TestContext): Promise<void> {
     lifecycle.dispose();
     alreadyQueued(20);
     assert.deepEqual(events, [
-      'request:1', 'render', 'request:2', 'cancel:2',
+      'request:1', 'render', 'request:2', 'cancel:2', 'controls:listener:remove',
       'mesh:null', 'controls:dispose', 'renderer:dispose',
     ]);
     assert.deepEqual(lifecycle.snapshot(), { disposed: true, running: false, frameRequest: null });
+  });
+
+  await t.test('a settled static scene renders initial and explicit invalidations, then leaves no RAF pending', () => {
+    const staticMesh = { rotation: { x: 0, y: 0, z: 0 } } as THREE.Mesh;
+    let staticMeshRenders = 0;
+    const staticMeshLoop = createSceneFrameLoop({
+      getMesh: () => staticMesh,
+      updateControls: () => false,
+      updateCameraLight() {},
+      render() { staticMeshRenders += 1; },
+    }, 0);
+    assert.equal(staticMeshLoop.renderFrame(0, true), false, 'mesh presence alone does not keep RAF alive');
+    assert.equal(staticMeshRenders, 1);
+
+    const queued = new Map<number, FrameRequestCallback>();
+    const renders: string[] = [];
+    let nextId = 0;
+    let reason = 'initial creation';
+    const lifecycle = createSceneResourceLifecycle({
+      requestFrame(callback) { const id = ++nextId; queued.set(id, callback); return id; },
+      cancelFrame(id) { queued.delete(id); },
+      renderFrame() { renders.push(reason); return false; },
+      removeInvalidationListeners() {},
+      clearMesh() {},
+      disposeControls() {},
+      disposeRenderer() {},
+    });
+
+    lifecycle.start();
+    queued.get(1)!(0);
+    queued.delete(1);
+    assert.deepEqual(renders, ['initial creation']);
+    assert.deepEqual(lifecycle.snapshot(), { disposed: false, running: false, frameRequest: null });
+
+    for (const explicitInvalidation of [
+      'setMesh', 'resize', 'split camera fit', 'legacy camera reset',
+      'center-light change', 'texture visibility change',
+    ]) {
+      reason = explicitInvalidation;
+      lifecycle.invalidate();
+      const [id, callback] = [...queued.entries()].at(-1)!;
+      callback(id * 10);
+      queued.delete(id);
+      assert.equal(lifecycle.snapshot().running, false, `${explicitInvalidation} settles after rendering`);
+    }
+    assert.deepEqual(renders, [
+      'initial creation', 'setMesh', 'resize', 'split camera fit', 'legacy camera reset',
+      'center-light change', 'texture visibility change',
+    ]);
+  });
+
+  await t.test('OrbitControls damping renders until update settles, then idles', () => {
+    const updates = [true, true, false];
+    let renderCount = 0;
+    const loop = createSceneFrameLoop({
+      getMesh: () => null,
+      updateControls: () => updates.shift() ?? false,
+      updateCameraLight() {},
+      render() { renderCount += 1; },
+    }, 0);
+
+    assert.equal(loop.renderFrame(0), true);
+    assert.equal(loop.renderFrame(16), true);
+    assert.equal(loop.renderFrame(32), false);
+    assert.equal(renderCount, 3, 'every visible damping step, including the settled frame, is rendered');
+  });
+
+  await t.test('model animation keeps scheduling at its refresh cadence and disable renders one final frame then settles', () => {
+    const mesh = { rotation: { x: 0, y: 0, z: 0 } } as THREE.Mesh;
+    const renderTimes: number[] = [];
+    let now = 0;
+    const loop = createSceneFrameLoop({
+      getMesh: () => mesh,
+      updateControls: () => false,
+      updateCameraLight() {},
+      render() { renderTimes.push(now); },
+    }, 0);
+    loop.setAnimationSettings({
+      enabled: true,
+      rotationSpeedDegPerSec: 90,
+      rotationAxis: 'y',
+      refreshRateHz: 20,
+    });
+
+    for (now of [0, 16, 32, 50, 66, 100]) assert.equal(loop.renderFrame(now), true);
+    assert.deepEqual(renderTimes, [0, 50, 100]);
+    assert.ok(mesh.rotation.y > 0, 'enabled animation preserves model rotation');
+
+    now = 110;
+    assert.equal(loop.renderFrame(now, true), true);
+    assert.deepEqual(renderTimes, [0, 50, 100, 110], 'explicit invalidation renders immediately between cadence ticks');
+
+    loop.setAnimationSettings({
+      enabled: false,
+      rotationSpeedDegPerSec: 90,
+      rotationAxis: 'y',
+      refreshRateHz: 20,
+    });
+    now = 116;
+    assert.equal(loop.renderFrame(now), false);
+    assert.deepEqual(renderTimes, [0, 50, 100, 110, 116], 'disable invalidation produces a final visible frame');
   });
 
   await t.test('Viewer mount lifecycle removes its listener/observer once and disposes presentation before scene', () => {
@@ -686,25 +795,34 @@ export async function registerTests(t: TestContext): Promise<void> {
   });
 
   await t.test('scene initialization failure disposes all resources once and preserves initialization error', () => {
-    for (const stage of ['resize', 'first-raf'] as const) {
+    for (const stage of ['controls-listener', 'resize', 'first-raf'] as const) {
       const events: string[] = [];
       const initializationError = new Error(`${stage} initialization failed`);
       const lifecycle = createSceneResourceLifecycle({
         requestFrame() { events.push('raf:request'); throw initializationError; },
         cancelFrame() { events.push('raf:cancel'); throw new Error('cancel cleanup failed'); },
-        renderFrame() {},
+        renderFrame() { return false; },
+        removeInvalidationListeners() { events.push('controls:listener:remove'); },
         clearMesh() { events.push('mesh:null'); throw new Error('mesh cleanup failed'); },
         disposeControls() { events.push('controls:dispose'); throw new Error('controls cleanup failed'); },
         disposeRenderer() { events.push('renderer:dispose'); throw new Error('renderer cleanup failed'); },
       });
       assert.throws(() => initializeSceneResourceLifecycle(lifecycle, () => {
+        events.push('controls:listener:add');
+        if (stage === 'controls-listener') throw initializationError;
         events.push('resize');
         if (stage === 'resize') throw initializationError;
         lifecycle.start();
       }), (error: unknown) => error === initializationError);
-      assert.deepEqual(events, stage === 'resize'
-        ? ['resize', 'mesh:null', 'controls:dispose', 'renderer:dispose']
-        : ['resize', 'raf:request', 'mesh:null', 'controls:dispose', 'renderer:dispose']);
+      const setupEvents = stage === 'controls-listener'
+        ? ['controls:listener:add']
+        : stage === 'resize'
+          ? ['controls:listener:add', 'resize']
+          : ['controls:listener:add', 'resize', 'raf:request'];
+      assert.deepEqual(events, [
+        ...setupEvents, 'controls:listener:remove', 'mesh:null',
+        'controls:dispose', 'renderer:dispose',
+      ]);
       assert.deepEqual(lifecycle.snapshot(), { disposed: true, running: false, frameRequest: null });
       assert.doesNotThrow(() => lifecycle.dispose(), 'failed initialization cleanup remains idempotent');
     }
@@ -716,7 +834,7 @@ export async function registerTests(t: TestContext): Promise<void> {
     const lifecycle = createSceneResourceLifecycle({
       requestFrame() { events.push('raf:request'); return 7; },
       cancelFrame() { events.push('raf:cancel'); throw cancelError; },
-      renderFrame() {},
+      renderFrame() { return false; },
       clearMesh() { events.push('mesh:null'); throw new Error('mesh failed'); },
       disposeControls() { events.push('controls:dispose'); throw new Error('controls failed'); },
       disposeRenderer() { events.push('renderer:dispose'); },

@@ -155,7 +155,7 @@ export function createGrayscaleTextureHandle(
 type PresentationSceneHandle = Pick<
   SceneHandle,
   'setMesh' | 'resize' | 'fitCameraToBounds' | 'resetLegacyCameraFrame'
->;
+> & Partial<Pick<SceneHandle, 'invalidate'>>;
 
 export type ViewerPresentationDependencies = {
   cloneGeometry(source: THREE.BufferGeometry): THREE.BufferGeometry;
@@ -272,6 +272,7 @@ export function createViewerPresentationController(
       if (!textureHandle) return;
       if (show) textureHandle.attach(materials.outer);
       else textureHandle.detach();
+      scene.invalidate?.();
     },
     dispose() {
       if (disposed) return;
