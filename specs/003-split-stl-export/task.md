@@ -294,7 +294,7 @@ Commit boundary: Phase 7 only. Prerequisites: reviewed Phase 6.
 
 Commit boundary: Phase 8 only. Prerequisites: reviewed Phase 7 and approved `e2e-test.md` supplied by the next pipeline phase.
 
-- [ ] **T8.1 — Integrate UI status, controls, and performance-safe Build workflow**
+- [x] **T8.1 — Integrate UI status, controls, and performance-safe Build workflow**
   - Prerequisites: T7.3.
   - Target files: `src/App.tsx`, `src/components/Controls.tsx`, `src/components/Viewer.tsx`, `tests/unit/state.test.ts`, `tests/unit/viewer.test.ts`, `tests/integration/spherePartGeometry.test.ts`.
   - Unit of work: finalize one-click Build orchestration/status, duplicate Build prevention, Export availability, recovery, and deterministic real-generator performance preflight without expanding scope. The authoritative 30-second acceptance measurement remains the approved Chrome DevTools E2E scenario in a real browser on acceptance hardware; state/viewer timing alone cannot satisfy SC-008.

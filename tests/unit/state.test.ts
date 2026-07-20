@@ -9,7 +9,7 @@ import {
 import { DEFAULT_PARAMS, type LithophaneParams } from '../../src/domain/params';
 import { initialState, isExportReady, reducer, type AppState } from '../../src/domain/state';
 import { validateParams } from '../../src/domain/validation';
-import { createBuiltPartGeometryOwner } from '../../src/App';
+import { createAppBuildGate, createBuiltPartGeometryOwner } from '../../src/App';
 
 function file(name = 'source.png'): File {
   return new File(['pixels'], name, { type: 'image/png', lastModified: 123 });
@@ -310,6 +310,30 @@ export async function registerTests(t: TestContext): Promise<void> {
       assert.fail('current result must not use the stale callback');
     }), true);
     assert.equal(published, 1);
+  });
+
+  await t.test('App Build gate synchronously rejects duplicates and stale completion cannot release a newer run', () => {
+    const coordinator = createGenerationRunCoordinator();
+    const gate = createAppBuildGate(coordinator);
+
+    const first = gate.tryBegin();
+    assert.equal(typeof first, 'number');
+    assert.equal(gate.tryBegin(), null, 'a second Build before React rerenders must be rejected');
+    assert.equal(gate.snapshot().locked, true);
+
+    gate.invalidate();
+    assert.equal(gate.snapshot().locked, false, 'new image selection invalidates and releases the old run');
+    const second = gate.tryBegin();
+    assert.equal(typeof second, 'number');
+    assert.notEqual(second, first);
+    assert.equal(gate.release(first!), false, 'stale completion must not release the newer run');
+    assert.equal(gate.tryBegin(), null);
+    assert.equal(gate.release(second!), true);
+    assert.equal(gate.snapshot().locked, false);
+
+    const recovery = gate.tryBegin();
+    assert.equal(typeof recovery, 'number', 'failure release permits a later Build without reload');
+    assert.equal(gate.release(recovery!), true);
   });
 
   await t.test('App source owner disposes replacement, Build clear, source selection/reset clear, and unmount exactly once', () => {

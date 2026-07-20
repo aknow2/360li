@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import type { TestContext } from 'node:test';
 import * as THREE from 'three';
 import { DEFAULT_PARAMS, type LithophaneParams } from '../../src/domain/params';
@@ -12,7 +13,8 @@ import {
 import { resolveSplitCell } from '../../src/lithophane/splitCell';
 import { decodeImageToImageData } from '../../src/lithophane/imageDecode';
 import { generateFromSnapshot } from '../../src/domain/generate';
-import { createBuildSnapshot } from '../../src/domain/builtPart';
+import { createBuildSnapshot, type BuiltPart } from '../../src/domain/builtPart';
+import { runAppGeneration } from '../../src/App';
 
 type Point = readonly [number, number, number];
 type StandScalars = {
@@ -58,6 +60,58 @@ function flatImage(value = 127, width = 8, height = 4): ImageData {
     data[offset + 3] = 255;
   }
   return { width, height, data } as ImageData;
+}
+
+type PreflightCanvas = HTMLCanvasElement & { pixels?: ImageData; drawnSource?: CanvasImageSource };
+
+function performancePixels(width: number, height: number): ImageData {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const offset = (y * width + x) * 4;
+      const value = (x * 17 + y * 31 + ((x >> 5) ^ (y >> 4)) * 13) & 255;
+      data[offset] = value;
+      data[offset + 1] = (value * 3 + 19) & 255;
+      data[offset + 2] = (value * 7 + 53) & 255;
+      data[offset + 3] = 255;
+    }
+  }
+  return { width, height, data } as ImageData;
+}
+
+function preflightCanvasFactory(): () => HTMLCanvasElement {
+  return () => {
+    const canvas = { width: 0, height: 0 } as PreflightCanvas;
+    canvas.getContext = ((kind: string) => {
+      assert.equal(kind, '2d');
+      return {
+        fillStyle: '#fff',
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high',
+        fillRect() {}, save() {}, restore() {}, scale() {},
+        putImageData(pixels: ImageData) { canvas.pixels = pixels; },
+        drawImage(source: CanvasImageSource) { canvas.drawnSource = source; },
+        getImageData(x = 0, y = 0, requestedWidth = canvas.width, requestedHeight = canvas.height) {
+          assert.equal(x, 0);
+          assert.equal(y, 0);
+          const source = canvas.drawnSource as PreflightCanvas | undefined;
+          if (
+            source?.pixels
+            && source.pixels.width === requestedWidth
+            && source.pixels.height === requestedHeight
+          ) {
+            return {
+              width: requestedWidth,
+              height: requestedHeight,
+              data: new Uint8ClampedArray(source.pixels.data),
+            } as ImageData;
+          }
+          return performancePixels(requestedWidth, requestedHeight);
+        },
+      } as unknown as CanvasRenderingContext2D;
+    }) as HTMLCanvasElement['getContext'];
+    return canvas;
+  };
 }
 
 function normalToImageUv(direction: THREE.Vector3): { u: number; v: number } {
@@ -229,6 +283,76 @@ function assertOneSectorStandCellsDoNotOverlap(complex: CanonicalVolumeComplex):
 }
 
 export async function registerTests(t: TestContext): Promise<void> {
+  await t.test('App generation boundary preserves defaults and limits injection to decode platform primitives', async () => {
+    const source = await readFile(new URL('../../src/App.tsx', import.meta.url), 'utf8');
+    assert.match(source, /if \(!decodePlatform\) return generateFromSnapshot\(snapshot\)/);
+    assert.doesNotMatch(source, /defaultAppDecodePlatform/);
+    assert.doesNotMatch(source, /AppGenerationDependencies/);
+    assert.doesNotMatch(source, /maxWorkingPixels/);
+    assert.match(source, /createWorkingImage,\s*\}\),\s*generate: generateSphereLithophane/s);
+  });
+
+  await t.test('4096x2048 production decode and H2/V2/part3 selected-solid preflight stays within the Node budget', async (test) => {
+    const width = 4096;
+    const height = 2048;
+    const nodePreflightBudgetMs = 45_000;
+    const source = new File([new Uint8Array([0])], 'performance-4096x2048.png', {
+      type: 'image/png',
+      lastModified: 1,
+    });
+    const snapshot = createBuildSnapshot(source, {
+      ...DEFAULT_PARAMS,
+      widthSegments: 256,
+      heightSegments: 128,
+      horizontalSplitCount: 2,
+      verticalSplitCount: 2,
+      splitIndex: 3,
+    });
+    const createCanvas = preflightCanvasFactory();
+    const originalDocument = globalThis.document;
+    let bitmapCloseCount = 0;
+    let sourceBitmapDimensions: readonly [number, number] | null = null;
+    let builtPart: BuiltPart | null = null;
+    const started = performance.now();
+    Object.assign(globalThis, { document: { createElement: () => createCanvas() } });
+    try {
+      builtPart = await runAppGeneration(snapshot, {
+          createImageBitmap: async () => {
+            sourceBitmapDimensions = [width, height];
+            return ({
+            width,
+            height,
+            close() { bitmapCloseCount += 1; },
+            }) as ImageBitmap;
+          },
+          createImageElement: () => { throw new Error('ImageBitmap path is required'); },
+          createObjectURL: () => { throw new Error('Object URL path must not run'); },
+          revokeObjectURL: () => { throw new Error('Object URL path must not run'); },
+          createCanvas,
+      });
+      const elapsedMs = performance.now() - started;
+      test.diagnostic(`4096x2048 real-pipeline Node preflight: ${elapsedMs.toFixed(1)} ms (budget ${nodePreflightBudgetMs} ms); only SP-E2E-017 real Chrome timing can satisfy SC-008 <30000 ms.`);
+      assert.ok(elapsedMs < nodePreflightBudgetMs, `Node preflight exceeded ${nodePreflightBudgetMs} ms: ${elapsedMs}`);
+      assert.deepEqual(sourceBitmapDimensions, [width, height]);
+      assert.equal(builtPart.workingImage.width, 4000);
+      assert.equal(builtPart.workingImage.height, 2000);
+      assert.equal(builtPart.workingImage.data.length, 4000 * 2000 * 4);
+      assert.equal(builtPart.snapshot.params.horizontalSplitCount, 2);
+      assert.equal(builtPart.snapshot.params.verticalSplitCount, 2);
+      assert.equal(builtPart.snapshot.params.splitIndex, 3);
+      assert.equal(builtPart.fileName, 'spherical-lithophane-h2-v2-part-3-of-4.stl');
+      assert.ok(builtPart.summary.vertexCount > 0);
+      assert.ok(builtPart.summary.triangleCount > 0);
+      const positions = builtPart.geometry.getAttribute('position');
+      assert.ok(positions.count > 0);
+      for (const coordinate of positions.array) assert.ok(Number.isFinite(coordinate));
+      assert.equal(bitmapCloseCount, 1);
+    } finally {
+      builtPart?.geometry.dispose();
+      Object.assign(globalThis, { document: originalDocument });
+    }
+  });
+
   await t.test('preserves exact sampled I/O and actual tau_k with one topology outward and inward', () => {
     const cases = (['outward', 'inward'] as const).map((thicknessDirection) => {
       const p = params({ thicknessDirection });

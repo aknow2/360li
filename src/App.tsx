@@ -2,7 +2,12 @@ import { useEffect, useReducer, useState } from 'react'
 import './App.css'
 import { Controls } from './components/Controls'
 import { Viewer } from './components/Viewer'
-import { createGenerationRunCoordinator, generateFromSnapshot, toGenerateErrorMessage } from './domain/generate'
+import {
+  createGenerationRunCoordinator,
+  generateFromSnapshot,
+  toGenerateErrorMessage,
+  type GenerationRunCoordinator,
+} from './domain/generate'
 import { initialState, isExportReady, reducer } from './domain/state'
 import { createBuildSnapshot, type BuiltPart } from './domain/builtPart'
 import type { LithophaneParams, SplitField } from './domain/params'
@@ -10,11 +15,68 @@ import { loadPreferences, savePreferences } from './domain/preferences'
 import { validateParams } from './domain/validation'
 import { exportBuiltPart } from './three/exporter'
 import type { AnimationSettings, CenterLightSettings } from './three/scene'
+import {
+  decodeImageToImageData,
+  type ImageDecodeDependencies,
+} from './lithophane/imageDecode'
+import { generateSphereLithophane } from './lithophane/sphereLithophane'
+import { createWorkingImage } from './lithophane/workingImage'
 
 export type BuiltPartGeometryOwner = {
   replace(part: BuiltPart): void
   clear(): void
   snapshot(): Readonly<{ current: BuiltPart | null }>
+}
+
+export type AppBuildGate = Readonly<{
+  tryBegin(): number | null
+  invalidate(): void
+  release(token: number): boolean
+  snapshot(): Readonly<{ locked: boolean; activeToken: number | null }>
+}>
+
+/** Synchronous App-side latch layered over async run invalidation. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function createAppBuildGate(runCoordinator: GenerationRunCoordinator): AppBuildGate {
+  let activeToken: number | null = null
+  return {
+    tryBegin() {
+      if (activeToken !== null) return null
+      activeToken = runCoordinator.begin()
+      return activeToken
+    },
+    invalidate() {
+      runCoordinator.invalidate()
+      activeToken = null
+    },
+    release(token) {
+      if (activeToken !== token) return false
+      activeToken = null
+      return true
+    },
+    snapshot: () => Object.freeze({
+      locked: activeToken !== null,
+      activeToken,
+    }),
+  }
+}
+
+type AppDecodePlatform = Omit<ImageDecodeDependencies, 'createWorkingImage'>
+
+/** App's production decode/working-image/generator route; tests inject platform primitives only. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function runAppGeneration(
+  snapshot: ReturnType<typeof createBuildSnapshot>,
+  decodePlatform?: AppDecodePlatform,
+): Promise<BuiltPart> {
+  if (!decodePlatform) return generateFromSnapshot(snapshot)
+  return generateFromSnapshot(snapshot, {
+    decode: (file, options) => decodeImageToImageData(file, options, {
+      ...decodePlatform,
+      createWorkingImage,
+    }),
+    generate: generateSphereLithophane,
+  })
 }
 
 /** App-only owner for published BuiltPart source geometry. */
@@ -49,6 +111,7 @@ function App() {
     })
   })
   const [runCoordinator] = useState(() => createGenerationRunCoordinator())
+  const [buildGate] = useState(() => createAppBuildGate(runCoordinator))
   const [builtPartOwner] = useState(() => createBuiltPartGeometryOwner())
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null)
   const [showTexture, setShowTexture] = useState(() => loadPreferences().showTexture)
@@ -69,13 +132,13 @@ function App() {
   }, [animationSettings, centerLightSettings, showTexture, state.params])
 
   useEffect(() => () => {
-    runCoordinator.invalidate()
+    buildGate.invalidate()
     builtPartOwner.clear()
-  }, [builtPartOwner, runCoordinator])
+  }, [buildGate, builtPartOwner])
 
   async function runGeneration(snapshot: ReturnType<typeof createBuildSnapshot>, runToken: number) {
     try {
-      const builtPart = await generateFromSnapshot(snapshot)
+      const builtPart = await runAppGeneration(snapshot)
       runCoordinator.publish(runToken, builtPart, (current) => {
         builtPartOwner.replace(current)
         dispatch({ type: 'generation_success', builtPart: current })
@@ -85,11 +148,13 @@ function App() {
     } catch (err) {
       if (!runCoordinator.isCurrent(runToken)) return
       dispatch({ type: 'generation_error', errorMessage: toGenerateErrorMessage(err) })
+    } finally {
+      buildGate.release(runToken)
     }
   }
 
   async function handleSelectFile(file: File) {
-    runCoordinator.invalidate()
+    buildGate.invalidate()
     builtPartOwner.clear()
     setExportErrorMessage(null)
     dispatch({ type: 'select_file', file })
@@ -120,7 +185,8 @@ function App() {
     if (state.status === 'generating') return
     if (state.paramsError) return
     const snapshot = createBuildSnapshot(state.file, state.params)
-    const runToken = runCoordinator.begin()
+    const runToken = buildGate.tryBegin()
+    if (runToken === null) return
     builtPartOwner.clear()
     dispatch({ type: 'start_generate' })
     void runGeneration(snapshot, runToken)

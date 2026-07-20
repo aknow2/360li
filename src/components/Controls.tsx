@@ -62,22 +62,23 @@ export function Controls({
 }: ControlsProps) {
   return (
     <form aria-label="Lithophane controls">
-      <fieldset disabled={disabled} style={{ border: 0, padding: 0, margin: 0 }}>
-        <div style={{ display: 'grid', gap: 12 }}>
-          {statusText ? <div style={{ fontSize: 12, opacity: 0.8 }}>{statusText}</div> : null}
+      <div style={{ display: 'grid', gap: 12 }}>
+        {statusText ? <div style={{ fontSize: 12, opacity: 0.8 }}>{statusText}</div> : null}
 
-          <label style={{ display: 'grid', gap: 6 }}>
-            <span>Source image (JPEG/PNG)</span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg"
-              onChange={(e) => {
-                const file = e.currentTarget.files?.[0];
-                if (file) onSelectFile?.(file);
-              }}
-            />
-          </label>
+        <label style={{ display: 'grid', gap: 6 }}>
+          <span>Source image (JPEG/PNG)</span>
+          <input
+            type="file"
+            accept="image/png,image/jpeg"
+            onChange={(e) => {
+              const file = e.currentTarget.files?.[0];
+              if (file) onSelectFile?.(file);
+            }}
+          />
+        </label>
 
+        <fieldset disabled={disabled} style={{ border: 0, padding: 0, margin: 0 }}>
+          <div style={{ display: 'grid', gap: 12 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               type="checkbox"
@@ -622,8 +623,9 @@ export function Controls({
           <button type="button" disabled={!exportEnabled} onClick={() => onExport?.()}>
             Export STL
           </button>
-        </div>
-      </fieldset>
+          </div>
+        </fieldset>
+      </div>
     </form>
   );
 }

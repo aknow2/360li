@@ -738,5 +738,20 @@ export async function registerTests(t: TestContext): Promise<void> {
     assert.doesNotMatch(viewerTag, /\bflipHorizontal=/);
     assert.doesNotMatch(viewerTag, /\bflipVertical=/);
     assert.doesNotMatch(viewerTag, /\bpaddingMode=/);
+    assert.match(source, /createAppBuildGate\(runCoordinator\)/, 'App must use the synchronous Build gate');
+    assert.match(source, /buildGate\.invalidate\(\)/, 'new image/unmount must invalidate the App gate');
+    assert.match(source, /buildEnabled=\{Boolean\(state\.file\).*state\.status !== 'generating'.*!state\.paramsError\}/s);
+    assert.match(source, /exportEnabled=\{isExportReady\(state\)\}/);
+  });
+
+  await t.test('Controls keeps new-image selection available while generation disables the Build control group', async () => {
+    const source = await readFile(new URL('../../src/components/Controls.tsx', import.meta.url), 'utf8');
+    const fileInput = source.indexOf('type="file"');
+    const generationDisabledGroup = source.indexOf('<fieldset disabled={disabled}');
+    assert.ok(fileInput >= 0, 'Controls must render the source file input');
+    assert.ok(generationDisabledGroup >= 0, 'Controls must retain a generation-disabled control group');
+    assert.ok(fileInput < generationDisabledGroup, 'source selection must remain outside the disabled group');
+    assert.match(source.slice(generationDisabledGroup), />\s*Build\s*</);
+    assert.match(source.slice(generationDisabledGroup), />\s*Export STL\s*</);
   });
 }
