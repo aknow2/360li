@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-07-20T16:37:34Z",
+  "scenario": "SP-E2E-003",
+  "status": "PASS",
+  "appCommit": "f66bcb8",
+  "continuedFrom": "SP-E2E-002 attempt 2 PASS",
+  "browser": "Chrome 150.0.7871.125",
+  "os": "macOS 26.5.2 (25F84)",
+  "viewport": { "width": 1440, "height": 1000, "devicePixelRatio": 1 },
+  "builtPart": { "horizontalSplitCount": 2, "verticalSplitCount": 2, "splitIndex": 3 },
+  "unbuiltDraftAfterEdit": { "horizontalSplitCount": 3, "verticalSplitCount": 2, "splitIndex": 4 },
+  "observed": {
+    "readyBeforeEdit": true,
+    "readyAfterEdit": true,
+    "exportRemainedEnabled": true,
+    "maskThreshold": 12,
+    "maskBeforeAfterEditAndDownloadExactlyEqual": true,
+    "mask": {
+      "changedPixels": 56769,
+      "bbox": { "left": 369, "top": 337, "right": 675, "bottom": 608, "width": 307, "height": 272 },
+      "centroid": { "x": 517.2726840353009, "y": 477.27458648205885 }
+    },
+    "rawPixelVarianceAttributableToChromeJpegCapture": {
+      "afterEditPixelsAboveThreshold12": 6,
+      "afterDownloadPixelsAboveThreshold12": 6,
+      "maskUnaffected": true
+    },
+    "consoleEntriesFromAppOrigin": 0,
+    "unrelatedExtensionWarnings": 6
+  },
+  "screenshots": [
+    { "file": "../screenshots/SP-E2E-003-before-edit-full.png", "bytes": 163993, "sha256": "b311b02e3d6fa158cd7db21c484fd4362ef4c8c40db726b141ac901821f91358" },
+    { "file": "../screenshots/SP-E2E-003-before-edit-canvas.png", "bytes": 45653, "sha256": "0317dab41bd99cef9056cbacdad5b47c3dd4d35da4da250c8ed2e2567cb96f7" },
+    { "file": "../screenshots/SP-E2E-003-after-edit-full.png", "bytes": 164048, "sha256": "83d42ae5251c82ae4e0f6f55e935fa8f40ec3d7aca589f17a55624d3b7e7ea96" },
+    { "file": "../screenshots/SP-E2E-003-after-edit-canvas.png", "bytes": 45652, "sha256": "3cc7ff235a0f9c006b4075ae290f6597e99db74042a2cea09224089adc8dcbf2" },
+    { "file": "../screenshots/SP-E2E-003-after-download-full.png", "bytes": 160239, "sha256": "3356f19e9e04b2b789332fd48af2a70b5fd7743a48b6468a8e8c9a116bf83bf3" },
+    { "file": "../screenshots/SP-E2E-003-after-download-canvas.png", "bytes": 45681, "sha256": "9c5c62ada43ce3645c6a7aadf6b679170f7779e6d0673ac482a00e8414a2d714" }
+  ],
+  "download": {
+    "clickCount": 1,
+    "newFileCount": 1,
+    "file": "../downloads/SP-E2E-003/spherical-lithophane-h2-v2-part-3-of-4.stl",
+    "bytes": 1651284,
+    "triangleCount": 33024,
+    "sha256": "7ee74a3f62e535b255f65a1c4080a83170af7e71dbf77b8185f0fc9a7ab29bea",
+    "binaryContainerValid": true,
+    "partialDownloadRemaining": false,
+    "filenameUsesBuiltSnapshotRatherThanDraft": true
+  },
+  "automatedEvidence": [
+    "tests/integration/exportParity.test.ts — Built Part export retains captured identity and selected indexed geometry",
+    "tests/integration/exportParity.test.ts — T6.2 binary triangle parity/no-foreign-part coverage"
+  ]
+}

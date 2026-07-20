@@ -1,0 +1,68 @@
+{
+  "timestamp": "2026-07-20T16:51:00Z",
+  "scenario": "SP-E2E-007",
+  "status": "PASS",
+  "appCommit": "f66bcb8",
+  "originIsolation": "Fresh localhost origin http://127.0.0.1:4177/",
+  "browser": "Chrome 150.0.7871.125",
+  "os": "macOS 26.5.2 (25F84)",
+  "viewport": { "width": 1440, "height": 1000, "devicePixelRatio": 1 },
+  "cases": [
+    {
+      "id": "a-blank-horizontal",
+      "action": "Cmd+A, Backspace, Tab",
+      "rawValue": "",
+      "alert": "Horizontal split count must be an integer between 1 and 256.",
+      "buildDisabled": true
+    },
+    {
+      "id": "b-fractional-vertical",
+      "rawValue": "1.5",
+      "alert": "Vertical split count must be an integer between 1 and 128.",
+      "buildDisabled": true
+    },
+    {
+      "id": "c-zero-index",
+      "rawValue": "0",
+      "alert": "Split Index must be an integer between 1 and 1.",
+      "buildDisabled": true
+    },
+    {
+      "id": "d-horizontal-over-width",
+      "widthSegments": "8",
+      "rawValue": "9",
+      "alert": "Horizontal split count must be an integer between 1 and 8.",
+      "buildDisabled": true
+    },
+    {
+      "id": "e-index-over-total-six",
+      "horizontal": "3",
+      "vertical": "2",
+      "rawValue": "7",
+      "alert": "Split Index must be an integer between 1 and 6.",
+      "buildDisabled": true
+    },
+    {
+      "id": "f-reduced-horizontal-retains-six",
+      "horizontal": "2",
+      "vertical": "2",
+      "retainedRawValue": "6",
+      "alert": "Split Index must be an integer between 1 and 4.",
+      "buildDisabled": true
+    }
+  ],
+  "observed": {
+    "allRawValuesPreservedWithoutRoundingClampingOrRewrite": true,
+    "exportDisabledEveryCase": true,
+    "previewRemainedEmpty": true,
+    "finalCanvasExactlyMatchesEmptyReference": true,
+    "finalCanvasPixelSha256": "3983dbe0c8668b0c9bd7bb051d6369e8ed1c5e1be1a6f02c820adb2a9704eac3",
+    "consoleEntriesFromAppOrigin": 0,
+    "unrelatedExtensionWarnings": 6
+  },
+  "screenshots": [
+    { "file": "../screenshots/SP-E2E-007-final-empty-full.png", "bytes": 145657, "sha256": "0fca1365d752227fdd707099af8263d8aba43960f61e5ba5760bad7ec7522a69" },
+    { "file": "../screenshots/SP-E2E-007-final-empty-canvas.png", "bytes": 14055, "sha256": "384c2cf1ce6fff15aac1205d0144a459e480c6b7a39e03e5e6dcbaa45064bf50" }
+  ],
+  "automatedEvidence": "tests/unit/state.test.ts and tests/unit/controls.test.ts cover raw drafts, field-specific dynamic validation, and disabled Build rendering."
+}

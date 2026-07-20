@@ -1,0 +1,95 @@
+{
+  "timestamp": "2026-07-20T16:26:09Z",
+  "scenario": "SP-E2E-002",
+  "attempt": 2,
+  "status": "PASS",
+  "appCommit": "f66bcb8",
+  "supersedesFailureEvidence": "2026-07-20-sp-e2e-002-ready-screenshot-failure.json",
+  "browser": "Chrome 150.0.7871.125",
+  "os": "macOS 26.5.2 (25F84)",
+  "viewport": {
+    "width": 1440,
+    "height": 1000,
+    "devicePixelRatio": 1
+  },
+  "fixture": {
+    "id": "FX-DIR",
+    "file": "directional-512x256.png",
+    "bytes": 524652,
+    "sha256": "1ac41dba6ff0f580c49c38b42534867f65cf39d35d5fff95cc82b8c3ee315a33"
+  },
+  "inputs": {
+    "animationEnabled": false,
+    "widthSegments": 256,
+    "heightSegments": 128,
+    "horizontalSplitCount": 2,
+    "verticalSplitCount": 2,
+    "splitIndex": 3
+  },
+  "observed": {
+    "generatingTransition": true,
+    "ready": true,
+    "error": false,
+    "buildElapsedMsIncludingAutomationPolling": 4275,
+    "buildEnabledAtReady": true,
+    "exportEnabledAtReady": true,
+    "canvasCssSize": {
+      "width": 1086,
+      "height": 914
+    },
+    "canvasBackingSize": {
+      "width": 1086,
+      "height": 914
+    },
+    "frontMaskAgainstEmptyReference": {
+      "threshold": 12,
+      "changedPixels": 91528,
+      "bbox": { "left": 290, "top": 329, "right": 793, "bottom": 584, "width": 504, "height": 256 },
+      "centroid": { "x": 540.286502491041, "y": 467.9862555720654 },
+      "edgeClearance": { "left": 290, "top": 329, "right": 292, "bottom": 329 },
+      "centroidDisplacementPercent": { "x": 0.2038211334216389, "y": 1.2567019225454498 },
+      "emptyReference": "../screenshots/SP-E2E-empty-reference-canvas.png"
+    },
+    "selectedPartFullyVisibleAndCentered": true,
+    "trustedOrbitDrag": {
+      "start": { "x": 880, "y": 526 },
+      "end": { "x": 720, "y": 526 },
+      "horizontalDeltaPx": -160
+    },
+    "orbitChangedViewAndKeptPartVisible": true,
+    "consoleEntriesFromAppOrigin": 0,
+    "unrelatedExtensionWarnings": 6,
+    "unrelatedExtensionOrigin": "chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/"
+  },
+  "screenshots": [
+    {
+      "file": "../screenshots/SP-E2E-002-front-full-rerun1.png",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 164961,
+      "sha256": "0f57f1adc41d28530c9488036d44d13dc56f8174b666298e4198675292ab8350"
+    },
+    {
+      "file": "../screenshots/SP-E2E-002-front-canvas-rerun1.png",
+      "width": 1086,
+      "height": 914,
+      "bytes": 51735,
+      "sha256": "ab28e9fc6e9244872911920a9f718a3491b69a41fb9454782719dbae62ecb3aa"
+    },
+    {
+      "file": "../screenshots/SP-E2E-002-orbit-full-rerun1.png",
+      "width": 1440,
+      "height": 1000,
+      "bytes": 163954,
+      "sha256": "31b8de00eb18935d8b8a4bbd19294ce2e5fe5ebd87a9fdef6093243fc224f78d"
+    },
+    {
+      "file": "../screenshots/SP-E2E-002-orbit-canvas-rerun1.png",
+      "width": 1086,
+      "height": 914,
+      "bytes": 45671,
+      "sha256": "041f8e026cdf1e73d3af028f7fc46f38ca5d7503660449826b4d167342d163d9"
+    }
+  ],
+  "rerunNotes": "The accepted rerun used a fresh Chrome target. A target that had previously timed out in Page.captureScreenshot remained poisoned even on about:blank and was not reused. The fresh target proved both the low-resolution control and the exact default-resolution static scene capture successfully after the demand-driven render fix."
+}

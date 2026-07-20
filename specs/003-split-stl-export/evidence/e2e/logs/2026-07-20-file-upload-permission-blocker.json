@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-07-20T15:29:21Z",
+  "appCommit": "dddca12",
+  "url": "http://127.0.0.1:4173/",
+  "browser": "Chrome 150.0.0.0",
+  "os": "macOS 26.5.2 (25F84)",
+  "machine": "Mac mini (Apple M4, 10 cores, 24 GB)",
+  "viewport": {
+    "width": 1440,
+    "height": 1000,
+    "devicePixelRatio": 1
+  },
+  "fixture": {
+    "id": "FX-DIR",
+    "path": "/tmp/360li-e2e-fixtures/directional-512x256.png",
+    "bytes": 524652,
+    "sha256": "1ac41dba6ff0f580c49c38b42534867f65cf39d35d5fff95cc82b8c3ee315a33"
+  },
+  "completedBeforeBlock": {
+    "scenario": "SP-E2E-001",
+    "result": "PASS",
+    "screenshots": [
+      "../screenshots/SP-E2E-001-empty-full.png",
+      "../screenshots/SP-E2E-001-empty-canvas.png"
+    ],
+    "consoleForbiddenCount": 0,
+    "postBoundaryRequestCount": 0
+  },
+  "blockedAction": "Set FX-DIR on the rendered Source image (JPEG/PNG) file input for SP-E2E-002.",
+  "browserResult": "Not allowed",
+  "requiredUserAction": "In chrome://extensions, open Details for the ChatGPT Chrome Extension and enable Allow access to file URLs.",
+  "integrityRule": "No runtime file-input substitution was used because the approved E2E specification requires the real rendered file chooser/input action."
+}

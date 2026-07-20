@@ -1,0 +1,69 @@
+{
+  "timestamp": "2026-07-20T17:06:08Z",
+  "scenario": "SP-E2E-008",
+  "attempt": 2,
+  "status": "PASS",
+  "appRevision": "f66bcb8 plus the reviewed cell-local boundary-volume fix",
+  "originIsolation": "Fresh localhost origin http://127.0.0.1:4179/",
+  "browser": "Chrome 150.0.7871.125",
+  "os": "macOS 26.5.2 (25F84)",
+  "viewport": { "width": 1440, "height": 1000, "devicePixelRatio": 1 },
+  "result": {
+    "oldBuild": { "horizontal": 2, "vertical": 2, "index": 3, "ready": true },
+    "invalidDraft": {
+      "index": 9,
+      "alert": "Split Index must be an integer between 1 and 4.",
+      "buildDisabled": true,
+      "exportEnabled": true,
+      "oldCanvasExactlyUnchanged": true,
+      "oldCanvasPixelSha256": "76803b51b8f29044c0850b920aacafc526965800c2b15e3bacbaae65b2cacf8c",
+      "invalidCanvasPixelSha256": "76803b51b8f29044c0850b920aacafc526965800c2b15e3bacbaae65b2cacf8c"
+    },
+    "oldExport": {
+      "file": "../downloads/SP-E2E-008-rerun/spherical-lithophane-h2-v2-part-3-of-4.stl",
+      "bytes": 1651284,
+      "triangleCount": 33024,
+      "binarySizeMatchesTriangleCount": true,
+      "sha256": "7ee74a3f62e535b255f65a1c4080a83170af7e71dbf77b8185f0fc9a7ab29bea"
+    },
+    "replacementBuild": {
+      "index": 4,
+      "trustedPrimaryPointerClickGapMs": 51,
+      "generatingTransitionCountObserved": 1,
+      "generatingState": {
+        "buildDisabled": true,
+        "exportDisabled": true,
+        "oldPreviewAbsent": true,
+        "status": "Generating…"
+      },
+      "finalStatus": "Ready",
+      "buildEnabled": true,
+      "exportEnabled": true,
+      "automaticOrDuplicateDownloads": 0,
+      "newCanvasDiffersFromIndex3": true,
+      "changedPixelsAtThreshold12": 98005,
+      "newCanvasPixelSha256": "8cd5aaccc123a1680cdee62aabdba07d2e27342e0411b85be8481de60260a028"
+    },
+    "consoleEntriesFromAppOrigin": 0,
+    "unrelatedExtensionWarnings": 6
+  },
+  "evidence": [
+    { "file": "../SP-E2E-008/SP-E2E-008-rerun-old-full.png", "bytes": 164961, "sha256": "0f57f1adc41d28530c9488036d44d13dc56f8174b666298e4198675292ab8350" },
+    { "file": "../SP-E2E-008/SP-E2E-008-rerun-old-canvas.png", "bytes": 51735, "sha256": "cc57b56eeb4aaa81ebaea5f818121fcf929b68a8545d89533e3e204938772beb" },
+    { "file": "../SP-E2E-008/SP-E2E-008-rerun-invalid-full.png", "bytes": 177485, "sha256": "933e6af03c70fbbc04c4993a69f6ddff1ff5b8c24e61729bec164bec9937887b" },
+    { "file": "../SP-E2E-008/SP-E2E-008-rerun-invalid-canvas.png", "bytes": 51735, "sha256": "cc57b56eeb4aaa81ebaea5f818121fcf929b68a8545d89533e3e204938772beb" },
+    { "file": "../SP-E2E-008/SP-E2E-008-rerun-generating-dom.txt", "assertion": "one Generating state with both action buttons disabled" },
+    { "file": "../SP-E2E-008/SP-E2E-008-rerun-new-full.png", "bytes": 160134, "sha256": "02958b369912fbc6065a2f36500e5b43d4a3235f90b4809cb746d86653153b8e" },
+    { "file": "../SP-E2E-008/SP-E2E-008-rerun-new-canvas.png", "bytes": 48508, "sha256": "59c6b9d9ddb9ee8e0d2cf7e7cb48a35f4f58f19d63df38c538de2717634f8f3d" }
+  ],
+  "rerunHistory": {
+    "priorFailure": "2026-07-20-sp-e2e-008-index4-failure.json",
+    "rootCause": "Origin-based boundary face determinants lost precision through cancellation for a small cell far from the origin.",
+    "fix": "Compute the same closed-boundary volume around a cell-local reference vertex while retaining the existing 2e-12 agreement gate.",
+    "automatedSupport": [
+      "default 256x128 FX-DIR production path builds every H2/V2 index",
+      "cell volume agreement rejects a genuine diagnostic mismatch",
+      "T3.2/T8.1 state and generation tests"
+    ]
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "timestamp": "2026-07-20T16:42:05Z",
+  "scenario": "SP-E2E-004",
+  "status": "PASS",
+  "appCommit": "f66bcb8",
+  "originIsolation": "Fresh localhost origin http://127.0.0.1:4174/ was used because the Chrome control surface intentionally blocks direct Storage deletion.",
+  "browser": "Chrome 150.0.7871.125",
+  "os": "macOS 26.5.2 (25F84)",
+  "viewport": { "width": 1440, "height": 1000, "devicePixelRatio": 1 },
+  "inputs": {
+    "fixture": "FX-DIR",
+    "widthSegments": 256,
+    "heightSegments": 128,
+    "horizontalSplitCount": 1,
+    "verticalSplitCount": 1,
+    "splitIndex": 1,
+    "animationEnabled": false
+  },
+  "observed": {
+    "freshReady": true,
+    "repeatReady": true,
+    "freshElapsedMsIncludingAutomationPolling": 350,
+    "repeatElapsedMsIncludingAutomationPolling": 342,
+    "transientGeneratingState": "The 1x1 synchronous run completed before a post-click DOM round trip; the same production Generating state is captured by SP-E2E-002 and covered by the T8.1 state/viewer gates.",
+    "canvasCssAndBacking": { "width": 1086, "height": 914 },
+    "freshAndRepeatPixelShaEqual": true,
+    "freshAndRepeatFullFileShaEqual": true,
+    "baselineMaskComparison": {
+      "threshold": 12,
+      "bbox": { "left": 170, "top": 91, "right": 915, "bottom": 830, "width": 746, "height": 740 },
+      "centroid": { "x": 544.0225219696882, "y": 460.3500885734465 },
+      "baselineBboxExact": true,
+      "baselineCentroidDeltaPx": { "x": -0.007656763453489424, "y": -0.06128021623109481 },
+      "withinTolerance": true
+    },
+    "consoleEntriesFromAppOrigin": 0,
+    "unrelatedExtensionWarnings": 6
+  },
+  "screenshots": [
+    { "file": "../screenshots/SP-E2E-004-fresh-full.png", "bytes": 207323, "sha256": "80eae0693fbe36287b7f389ee5797aa22271e136a7ecbafa8e080abc7b249735" },
+    { "file": "../screenshots/SP-E2E-004-fresh-canvas.png", "bytes": 101112, "sha256": "8bf4341facefa25e377805aeb542a644045cfd915750dddff2ec7499da86e67d" },
+    { "file": "../screenshots/SP-E2E-004-repeat-full.png", "bytes": 207323, "sha256": "80eae0693fbe36287b7f389ee5797aa22271e136a7ecbafa8e080abc7b249735" },
+    { "file": "../screenshots/SP-E2E-004-repeat-canvas.png", "bytes": 101112, "sha256": "8bf4341facefa25e377805aeb542a644045cfd915750dddff2ec7499da86e67d" }
+  ],
+  "download": {
+    "file": "../downloads/SP-E2E-004/spherical-lithophane.stl",
+    "bytes": 6502484,
+    "triangleCount": 130048,
+    "sha256": "65756d2821bf60fe57adeac56a7556e3a50b1d0f6cc17a0ca6c1c204bdaa4058",
+    "binaryContainerValid": true,
+    "partialDownloadRemaining": false
+  },
+  "automatedEvidence": [
+    "tests/integration/exportParity.test.ts — default geometry/STL fixture parity and byte determinism",
+    "tests/unit/viewer.test.ts — legacy camera transition and Build clearing lifecycle"
+  ]
+}

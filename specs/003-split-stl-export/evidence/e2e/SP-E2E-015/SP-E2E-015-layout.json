@@ -1,0 +1,49 @@
+{
+  "topScroll": 0,
+  "bottomScroll": 1202,
+  "metrics": {
+    "aside": {
+      "bottom": 768,
+      "height": 716,
+      "right": 320,
+      "width": 320,
+      "x": 0,
+      "y": 52
+    },
+    "asideScroll": {
+      "height": 716,
+      "scrollHeight": 1918,
+      "top": 1202
+    },
+    "canvas": {
+      "bottom": 751,
+      "height": 682,
+      "right": 1007,
+      "width": 670,
+      "x": 337,
+      "y": 69
+    },
+    "doc": {
+      "clientHeight": 768,
+      "clientWidth": 1024,
+      "scrollHeight": 768,
+      "scrollWidth": 1024
+    },
+    "header": {
+      "bottom": 52,
+      "height": 52,
+      "right": 1024,
+      "width": 1024,
+      "x": 0,
+      "y": 0
+    },
+    "main": {
+      "bottom": 768,
+      "height": 716,
+      "right": 1024,
+      "width": 704,
+      "x": 320,
+      "y": 52
+    }
+  }
+}
