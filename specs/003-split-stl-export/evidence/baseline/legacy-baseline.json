@@ -1,0 +1,145 @@
+{
+  "feature": "003-split-stl-export",
+  "legacyCommit": "f4218ea3b95c245b2c4489197018e0283f443990",
+  "capturedAt": "2026-07-20T04:33:07Z",
+  "environment": {
+    "browser": {
+      "name": "Chrome",
+      "version": "150.0.0.0",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36"
+    },
+    "os": {
+      "name": "macOS",
+      "version": "26.5.2",
+      "build": "25F84"
+    },
+    "platform": "MacIntel",
+    "origin": "http://127.0.0.1:4173/",
+    "server": "Vite dev configuration",
+    "viewport": {
+      "width": 1440,
+      "height": 1000,
+      "cssPixels": true,
+      "devicePixelRatio": 1
+    },
+    "horizontalScroll": {
+      "documentScrollWidth": 1440,
+      "documentClientWidth": 1440
+    },
+    "profile": {
+      "contextName": "360li-legacy-baseline",
+      "fresh": true,
+      "localStorageClearedBeforeFreshCaptures": true,
+      "sessionStorageClearedBeforeFreshCaptures": true
+    }
+  },
+  "fixture": {
+    "FX-DIR": {
+      "file": "directional-512x256.png",
+      "bytes": 524652,
+      "sha256": "1ac41dba6ff0f580c49c38b42534867f65cf39d35d5fff95cc82b8c3ee315a33"
+    },
+    "FX-ALT": {
+      "file": "alternate-384x192.png",
+      "bytes": 295192,
+      "sha256": "38ba8c89948409cf7eb77d82cd81d59b2695c8dfc58cf1b0d3a43a3c7984e11a"
+    }
+  },
+  "captureMethod": {
+    "tool": "Chrome DevTools MCP",
+    "uploadWorkaround": "Its upload_file/save-path root configuration rejected both /tmp and workspace paths. Each verified fixture was temporarily served from same-origin Vite, converted to a File, assigned to the real input[type=file] through DataTransfer, and normal bubbling input/change events were dispatched.",
+    "forbiddenAccessAvoided": "No React internals or module state were read or assigned.",
+    "screenshots": "Screenshots came from Chrome DevTools MCP; canvas crops and mask pixels were derived from those screenshots.",
+    "temporaryEvidenceOnly": true,
+    "temporaryPublicCopiesRemovedBeforeImplementation": true
+  },
+  "sharedDomCanvas": {
+    "viewport": {
+      "width": 1440,
+      "height": 1000,
+      "devicePixelRatio": 1
+    },
+    "previewRect": { "x": 336, "y": 68, "width": 1088, "height": 916 },
+    "canvasRect": { "x": 337, "y": 69, "width": 1086, "height": 914, "right": 1423, "bottom": 983 },
+    "canvasBackingStore": { "width": 1086, "height": 914 },
+    "mainRect": { "x": 320, "y": 52, "width": 1120, "height": 948 },
+    "afterBuild": {
+      "statusText": "Ready",
+      "placeholderText": null,
+      "buildDisabled": false,
+      "exportDisabled": false,
+      "alerts": [],
+      "showGrayscaleTexture": true,
+      "animation": false
+    }
+  },
+  "mask": {
+    "reference": "BASE-EMPTY-canvas.png at the same viewport",
+    "rule": "Foreground iff maximum absolute RGB channel difference > 12",
+    "cropDimensions": { "width": 1086, "height": 914 },
+    "BASE-DIR-FRESH": {
+      "changedPixels": 431761,
+      "maxChannelDiff": 206,
+      "bbox": { "left": 170, "top": 91, "right": 915, "bottom": 830, "width": 746, "height": 740 },
+      "centroid": { "x": 544.0301787331417, "y": 460.4113687896776 },
+      "edgeClearance": { "left": 170, "top": 91, "right": 170, "bottom": 83 },
+      "occupancy": 0.43497809801290344
+    },
+    "BASE-DIR-REPEAT": {
+      "exactlySameAs": "BASE-DIR-FRESH"
+    },
+    "BASE-ALT-FRESH": {
+      "changedPixels": 435561,
+      "maxChannelDiff": 148,
+      "bbox": { "left": 169, "top": 90, "right": 916, "bottom": 830, "width": 748, "height": 741 },
+      "centroid": { "x": 542.5057156173303, "y": 457.34271663440944 },
+      "edgeClearance": { "left": 169, "top": 90, "right": 169, "bottom": 83 },
+      "occupancy": 0.43880641222481476
+    }
+  },
+  "captures": {
+    "BASE-EMPTY": {
+      "full": { "file": "BASE-EMPTY-full.png", "width": 1440, "height": 1000, "sha256": "cbf7c59ff9200ff2fbcef867b105758a0c1b94d74088daa870c268b922371d57" },
+      "canvas": { "file": "BASE-EMPTY-canvas.png", "width": 1086, "height": 914, "sha256": "72f413d60bde100dac468d5c4dc32b49b242933e5ff677b390756c8cf9903eb7" }
+    },
+    "BASE-DIR-FRESH": {
+      "fixture": "FX-DIR",
+      "full": { "file": "BASE-DIR-FRESH-full.png", "width": 1440, "height": 1000, "sha256": "702ef6d0e99dc325c2a7f591988e4ef819bcf2e0b445fd6fa4e529ee509dce21" },
+      "canvas": { "file": "BASE-DIR-FRESH-canvas.png", "width": 1086, "height": 914, "sha256": "c2af184f36ce29940f187b3c7a5dca03b95e417f5113b5a4e8e8ac481a47a518" }
+    },
+    "BASE-DIR-REPEAT": {
+      "fixture": "FX-DIR",
+      "full": { "file": "BASE-DIR-REPEAT-full.png", "width": 1440, "height": 1000, "sha256": "73a0cda8963d307786a2a457bed7eb4992d5c6321cd7782327e5f3628d69cf76" },
+      "canvas": { "file": "BASE-DIR-REPEAT-canvas.png", "width": 1086, "height": 914, "sha256": "c2af184f36ce29940f187b3c7a5dca03b95e417f5113b5a4e8e8ac481a47a518" }
+    },
+    "BASE-ALT-FRESH": {
+      "fixture": "FX-ALT",
+      "full": { "file": "BASE-ALT-FRESH-full.png", "width": 1440, "height": 1000, "sha256": "2988247da564ff4f58ed697861df2ab9b47ed26ed921324d367b3f54234fa9e8" },
+      "canvas": { "file": "BASE-ALT-FRESH-canvas.png", "width": 1086, "height": 914, "sha256": "ed90f7a62268e5fef9c5e410527a457ba08a67976aeb81b13e2383a18eb82c20" }
+    }
+  },
+  "freshVersusRepeat": {
+    "compared": ["BASE-DIR-FRESH", "BASE-DIR-REPEAT"],
+    "canvasCropSha256Equal": true,
+    "maskEqual": true,
+    "centroidDeltaCssPx": { "x": 0, "y": 0 },
+    "bboxEdgeDeltaCssPx": { "left": 0, "top": 0, "right": 0, "bottom": 0 },
+    "tolerances": { "centroidMax": 1, "bboxEdgeMax": 2 },
+    "withinTolerance": true,
+    "fullScreenshotsByteForByteClaimed": false
+  },
+  "console": {
+    "preservedAcrossCaptures": true,
+    "errors": 0,
+    "warnings": 0,
+    "uncaught": 0,
+    "unhandled": 0,
+    "informational": ["Vite/React informational messages"],
+    "existingDevToolsIssue": "17 form fields without id/name; informational DevTools issue, not a console warning/error"
+  },
+  "results": {
+    "BASE-DIR-FRESH": "VALID",
+    "BASE-DIR-REPEAT": "VALID",
+    "BASE-ALT-FRESH": "VALID"
+  }
+}

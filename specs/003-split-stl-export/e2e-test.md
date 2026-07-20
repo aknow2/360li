@@ -583,9 +583,9 @@ Baseline records (also immutable after implementation begins):
 
 | Baseline | Legacy commit | Timestamp | Browser / OS / viewport / DPR | Fixture/hash | Screenshot/crop evidence | DOM/canvas/mask evidence | Result |
 |---|---|---|---|---|---|---|---|
-| BASE-DIR-FRESH | — | — | — | FX-DIR / expected hash | — | — | NOT CAPTURED |
-| BASE-DIR-REPEAT | — | — | — | FX-DIR / expected hash | — | — | NOT CAPTURED |
-| BASE-ALT-FRESH | — | — | — | FX-ALT / expected hash | — | — | NOT CAPTURED |
+| BASE-DIR-FRESH | f4218ea3b95c245b2c4489197018e0283f443990 | 2026-07-20T04:33:07Z | Chrome 150.0.0.0 / macOS 26.5.2 build 25F84 / 1440x1000 / DPR 1 | FX-DIR / `directional-512x256.png` / 524652 bytes / `1ac41dba6ff0f580c49c38b42534867f65cf39d35d5fff95cc82b8c3ee315a33` | [full](evidence/baseline/BASE-DIR-FRESH-full.png), [canvas](evidence/baseline/BASE-DIR-FRESH-canvas.png), [manifest](evidence/baseline/legacy-baseline.json) | Ready; canvas 1086x914 backing store; rects and mask metrics in [manifest](evidence/baseline/legacy-baseline.json); zero error/warn/uncaught/unhandled messages | VALID |
+| BASE-DIR-REPEAT | f4218ea3b95c245b2c4489197018e0283f443990 | 2026-07-20T04:33:07Z | Chrome 150.0.0.0 / macOS 26.5.2 build 25F84 / 1440x1000 / DPR 1 | FX-DIR / `directional-512x256.png` / 524652 bytes / `1ac41dba6ff0f580c49c38b42534867f65cf39d35d5fff95cc82b8c3ee315a33` | [full](evidence/baseline/BASE-DIR-REPEAT-full.png), [canvas](evidence/baseline/BASE-DIR-REPEAT-canvas.png), [manifest](evidence/baseline/legacy-baseline.json) | Ready; canvas crop/mask exactly equals DIR Fresh; centroid delta 0 px and bbox-edge deltas 0 px; DOM/rects/console in [manifest](evidence/baseline/legacy-baseline.json) | VALID |
+| BASE-ALT-FRESH | f4218ea3b95c245b2c4489197018e0283f443990 | 2026-07-20T04:33:07Z | Chrome 150.0.0.0 / macOS 26.5.2 build 25F84 / 1440x1000 / DPR 1 | FX-ALT / `alternate-384x192.png` / 295192 bytes / `38ba8c89948409cf7eb77d82cd81d59b2695c8dfc58cf1b0d3a43a3c7984e11a` | [full](evidence/baseline/BASE-ALT-FRESH-full.png), [canvas](evidence/baseline/BASE-ALT-FRESH-canvas.png), [manifest](evidence/baseline/legacy-baseline.json) | Ready; canvas 1086x914 backing store; rects and mask metrics in [manifest](evidence/baseline/legacy-baseline.json); zero error/warn/uncaught/unhandled messages | VALID |
 
 ## Final acceptance rule
 
