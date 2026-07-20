@@ -88,7 +88,7 @@ Commit boundary: Phase 1 only. Prerequisites: reviewed Phase 0.
 
 Commit boundary: Phase 2 only. Prerequisites: reviewed Phase 1.
 
-- [ ] **T2.1 — Implement deterministic segment allocation and SplitCell resolution**
+- [x] **T2.1 — Implement deterministic segment allocation and SplitCell resolution**
   - Prerequisites: T1.1.
   - Target files: `src/lithophane/splitCell.ts`, `tests/unit/splitCell.test.ts`.
   - Unit of work: implement only pure `allocateSegmentRange` and `resolveSplitCell` using integer segment boundaries, south-to-north row-major ordering, and the specified seam convention.
