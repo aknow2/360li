@@ -1,22 +1,26 @@
-import { useEffect, useReducer, useRef, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import './App.css'
 import { Controls } from './components/Controls'
 import { Viewer } from './components/Viewer'
-import { generateFromFile, toGenerateErrorMessage } from './domain/generate'
-import { initialState, reducer } from './domain/state'
-import type { LithophaneParams } from './domain/params'
+import { createGenerationRunCoordinator, generateFromSnapshot, toGenerateErrorMessage } from './domain/generate'
+import { initialState, isExportReady, reducer } from './domain/state'
+import { createBuildSnapshot } from './domain/builtPart'
+import type { LithophaneParams, SplitField } from './domain/params'
 import { loadPreferences, savePreferences } from './domain/preferences'
 import { validateParams } from './domain/validation'
-import { downloadBlob, exportGeometryToStlBlob } from './three/exporter'
+import { exportBuiltPart } from './three/exporter'
 import type { AnimationSettings, CenterLightSettings } from './three/scene'
 
 function App() {
   const [state, dispatch] = useReducer(reducer, undefined, () => {
     const preferences = loadPreferences()
     const v = validateParams(preferences.params)
-    return initialState(preferences.params, v.ok ? null : { field: v.error.field, message: v.error.message })
+    return initialState(preferences.params, v.ok ? null : {
+      field: v.error.field as keyof LithophaneParams,
+      message: v.error.message,
+    })
   })
-  const runIdRef = useRef(0)
+  const [runCoordinator] = useState(() => createGenerationRunCoordinator())
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null)
   const [showTexture, setShowTexture] = useState(() => loadPreferences().showTexture)
   const [animationSettings, setAnimationSettings] = useState<AnimationSettings>(
@@ -35,39 +39,50 @@ function App() {
     })
   }, [animationSettings, centerLightSettings, showTexture, state.params])
 
-  async function runGeneration(file: File, params: LithophaneParams) {
-    dispatch({ type: 'start_generate' })
+  useEffect(() => {
+    const geometry = state.builtPart?.geometry
+    return () => geometry?.dispose()
+  }, [state.builtPart])
 
-    const runId = ++runIdRef.current
+  useEffect(() => () => runCoordinator.invalidate(), [runCoordinator])
+
+  async function runGeneration(snapshot: ReturnType<typeof createBuildSnapshot>, runToken: number) {
     try {
-      const result = await generateFromFile(file, { params })
-      if (runId !== runIdRef.current) return
-      dispatch({ type: 'generation_success', geometry: result.geometry, summary: result.summary })
+      const builtPart = await generateFromSnapshot(snapshot)
+      runCoordinator.publish(runToken, builtPart, (current) => {
+        dispatch({ type: 'generation_success', builtPart: current })
+      }, (stale) => {
+        stale.geometry.dispose()
+      })
     } catch (err) {
-      if (runId !== runIdRef.current) return
+      if (!runCoordinator.isCurrent(runToken)) return
       dispatch({ type: 'generation_error', errorMessage: toGenerateErrorMessage(err) })
     }
   }
 
   async function handleSelectFile(file: File) {
+    runCoordinator.invalidate()
     setExportErrorMessage(null)
     dispatch({ type: 'select_file', file })
-    const v = validateParams(state.params)
-    if (!v.ok) {
-      dispatch({ type: 'set_params', params: state.params, paramsError: { field: v.error.field, message: v.error.message } })
-      return
-    }
     // Do not auto-generate. User must press Build.
   }
 
   function handleChangeParams(next: LithophaneParams) {
     setExportErrorMessage(null)
-    const v = validateParams(next)
+    const v = validateParams(next, state.splitDraft)
     dispatch({
       type: 'set_params',
       params: next,
-      paramsError: v.ok ? null : { field: v.error.field, message: v.error.message },
+      paramsError: v.ok ? null : {
+        field: v.error.field as keyof LithophaneParams,
+        message: v.error.message,
+      },
     })
+  }
+
+  function handleChangeSplitDraft(field: SplitField, raw: string) {
+    setExportErrorMessage(null)
+    dispatch({ type: 'set_split_input', field, raw })
   }
 
   function handleBuild() {
@@ -75,7 +90,10 @@ function App() {
     if (!state.file) return
     if (state.status === 'generating') return
     if (state.paramsError) return
-    void runGeneration(state.file, state.params)
+    const snapshot = createBuildSnapshot(state.file, state.params)
+    const runToken = runCoordinator.begin()
+    dispatch({ type: 'start_generate' })
+    void runGeneration(snapshot, runToken)
   }
 
   function handleExport() {
@@ -86,14 +104,13 @@ function App() {
       return
     }
 
-    if (state.status !== 'ready') {
+    if (!isExportReady(state)) {
       setExportErrorMessage('No model to export yet.');
       return
     }
 
     try {
-      const blob = exportGeometryToStlBlob(state.geometry, { binary: true })
-      downloadBlob(blob, 'spherical-lithophane.stl')
+      exportBuiltPart(state.builtPart)
       setExportErrorMessage(null)
     } catch (err) {
       setExportErrorMessage(toGenerateErrorMessage(err))
@@ -126,13 +143,15 @@ function App() {
             showTexture={showTexture}
             onToggleShowTexture={setShowTexture}
             params={state.params}
+            splitDraft={state.splitDraft}
             paramsEnabled={state.status !== 'idle'}
             paramsErrorField={state.paramsError?.field ?? null}
             paramsErrorMessage={state.paramsError?.message ?? null}
             onChangeParams={handleChangeParams}
+            onChangeSplitDraft={handleChangeSplitDraft}
             buildEnabled={Boolean(state.file) && state.status !== 'generating' && !state.paramsError}
             onBuild={handleBuild}
-            exportEnabled={state.status === 'ready'}
+            exportEnabled={isExportReady(state)}
             exportErrorMessage={exportErrorMessage}
             onExport={handleExport}
             animationSettings={animationSettings}
@@ -144,7 +163,7 @@ function App() {
 
         <main className="viewer">
           <Viewer
-            geometry={state.geometry}
+            geometry={state.builtPart?.geometry ?? null}
             file={state.status === 'idle' ? null : state.file}
             imageScale={state.params.imageScale}
             flipHorizontal={state.params.flipHorizontal}

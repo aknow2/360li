@@ -6,6 +6,8 @@ import type { TestContext } from 'node:test';
 import { DEFAULT_PARAMS, type LithophaneParams, type SplitField } from '../../src/domain/params';
 import { generateSphereLithophane } from '../../src/lithophane/sphereLithophane';
 import { exportGeometryToStlBlob } from '../../src/three/exporter';
+import { exportBuiltPart } from '../../src/three/exporter';
+import { createBuildSnapshot, deriveStlFileName, type BuiltPart } from '../../src/domain/builtPart';
 
 const fixturesDirectory = resolve(import.meta.dirname, '../fixtures');
 const manifestPath = resolve(fixturesDirectory, 'legacy-1x1-geometry.json');
@@ -166,6 +168,61 @@ async function assertStlFixture(fixture: FixtureCase, stl: Uint8Array): Promise<
 }
 
 export async function registerTests(t: TestContext): Promise<void> {
+  await t.test('Built Part export retains captured geometry identity and filename after live edits', async () => {
+    const geometry = generateSphereLithophane(makeImageData('outward-default', 7, 5), DEFAULT_PARAMS).geometry;
+    const snapshot = createBuildSnapshot(
+      new File(['fixture'], 'fixture.png', { type: 'image/png', lastModified: 1 }),
+      { ...DEFAULT_PARAMS, horizontalSplitCount: 3, verticalSplitCount: 2, splitIndex: 5 },
+    );
+    const part: BuiltPart = Object.freeze({
+      geometry,
+      summary: { vertexCount: geometry.getAttribute('position').count, triangleCount: (geometry.getIndex()?.count ?? 0) / 3 },
+      workingImage: makeImageData('outward-default', 7, 5),
+      snapshot,
+      fileName: deriveStlFileName(snapshot.params),
+    });
+    const liveParams = {
+      ...snapshot.params,
+      horizontalSplitCount: 4,
+      verticalSplitCount: 3,
+      splitIndex: 7,
+      imageScale: 0.63,
+      flipHorizontal: true,
+      flipVertical: true,
+      paddingMode: 'stretch' as const,
+    };
+    const downloads: Array<{ blob: Blob; fileName: string }> = [];
+    try {
+      const blob = exportBuiltPart(part, (receivedBlob, fileName) => {
+        downloads.push({ blob: receivedBlob, fileName });
+      });
+      assert.equal(downloads[0]?.blob, blob);
+      assert.equal(downloads[0]?.fileName, 'spherical-lithophane-h3-v2-part-5-of-6.stl');
+      assert.equal(part.geometry, geometry);
+      assert.equal(part.fileName, deriveStlFileName(snapshot.params));
+      assert.deepEqual(snapshot.params, {
+        ...DEFAULT_PARAMS,
+        horizontalSplitCount: 3,
+        verticalSplitCount: 2,
+        splitIndex: 5,
+      });
+      assert.notEqual(liveParams.horizontalSplitCount, snapshot.params.horizontalSplitCount);
+      assert.notEqual(liveParams.verticalSplitCount, snapshot.params.verticalSplitCount);
+      assert.notEqual(liveParams.splitIndex, snapshot.params.splitIndex);
+      assert.notEqual(liveParams.imageScale, snapshot.params.imageScale);
+      assert.notEqual(liveParams.flipHorizontal, snapshot.params.flipHorizontal);
+      assert.notEqual(liveParams.flipVertical, snapshot.params.flipVertical);
+      assert.notEqual(liveParams.paddingMode, snapshot.params.paddingMode);
+      assert.notEqual(deriveStlFileName(liveParams), part.fileName);
+      assert.deepEqual(
+        new Uint8Array(await blob.arrayBuffer()),
+        new Uint8Array(await exportGeometryToStlBlob(geometry, { binary: true }).arrayBuffer()),
+      );
+    } finally {
+      geometry.dispose();
+    }
+  });
+
   await t.test('default geometry/STL fixture parity', async () => {
     const [outward] = await readVerifiedManifest();
     const result = await capture(outward);

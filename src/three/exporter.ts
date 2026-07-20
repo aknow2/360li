@@ -1,6 +1,7 @@
 import type { BufferGeometry } from 'three';
 import * as THREE from 'three';
 import { STLExporter } from 'three/examples/jsm/exporters/STLExporter.js';
+import type { BuiltPart } from '../domain/builtPart';
 
 export type StlExportOptions = {
   binary?: boolean;
@@ -35,4 +36,13 @@ export function downloadBlob(blob: Blob, fileName: string) {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+export function exportBuiltPart(
+  builtPart: BuiltPart,
+  download: (blob: Blob, fileName: string) => void = downloadBlob,
+): Blob {
+  const blob = exportGeometryToStlBlob(builtPart.geometry, { binary: true });
+  download(blob, builtPart.fileName);
+  return blob;
 }

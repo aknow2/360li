@@ -109,7 +109,7 @@ Commit boundary: Phase 2 only. Prerequisites: reviewed Phase 1.
 
 Commit boundary: Phase 3 only. Prerequisites: reviewed Phase 2.
 
-- [ ] **T3.1 — Create immutable Built Part snapshots and STL filename derivation**
+- [x] **T3.1 — Create immutable Built Part snapshots and STL filename derivation**
   - Prerequisites: T1.1.
   - Target files: `src/domain/builtPart.ts`, `tests/unit/builtPart.test.ts`.
   - Unit of work: define immutable Built Part/Snapshot types, shallow-copy/freeze primitive params and source metadata, and derive both required filenames from snapshot params.
@@ -121,7 +121,7 @@ Commit boundary: Phase 3 only. Prerequisites: reviewed Phase 2.
   - Definition of Done: `fileName` is computed once from frozen Build params; UI-only settings are excluded; `workingImage` and `.data` have an explicit read-only consumer contract despite typed-array mutability.
   - Trace: FR-008, FR-013, FR-028; AC-002; SC-006; MVP-004, MVP-006.
 
-- [ ] **T3.2 — Refactor reducer to own Built Part lifecycle and raw drafts**
+- [x] **T3.2 — Refactor reducer to own Built Part lifecycle and raw drafts**
   - Prerequisites: T3.1, T1.1.
   - Target files: `src/domain/state.ts`, `tests/unit/state.test.ts`.
   - Unit of work: replace geometry/summary state with `builtPart`, introduce `set_split_input`, and encode valid Build/new-file clearing, error, ready, and stale-result state contracts without reducer side effects.
@@ -134,7 +134,7 @@ Commit boundary: Phase 3 only. Prerequisites: reviewed Phase 2.
   - Definition of Done: reducer is pure; only App performs disposal; Build start atomically removes Preview/export target; editable state and built identity are distinguishable; source selection invalidates the run token contract.
   - Trace: FR-010, FR-011, FR-028, FR-035; AC-002; MVP-004, MVP-005, MVP-016.
 
-- [ ] **T3.3 — Make generation/export consume only the Build snapshot/Built Part**
+- [x] **T3.3 — Make generation/export consume only the Build snapshot/Built Part**
   - Prerequisites: T3.1, T3.2.
   - Target files: `src/domain/generate.ts`, `src/App.tsx`, `src/three/exporter.ts`, `tests/unit/state.test.ts`, `tests/integration/exportParity.test.ts`.
   - Unit of work: decode once from captured file/params, publish atomically as Built Part, dispose ignored stale geometry, and make export pass exactly `builtPart.geometry` and `builtPart.fileName` without regeneration/live params.

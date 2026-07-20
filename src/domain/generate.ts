@@ -1,21 +1,74 @@
-import { DEFAULT_PARAMS, type LithophaneParams } from './params';
+import type { BuiltPart, BuiltPartSnapshot } from './builtPart';
+import { deriveStlFileName } from './builtPart';
 import { toUserMessage } from './errors';
 import { decodeImageToImageData } from '../lithophane/imageDecode';
 import { generateSphereLithophane } from '../lithophane/sphereLithophane';
 
-export type GenerateOptions = {
-  params?: LithophaneParams;
+export type GenerateDependencies = Readonly<{
+  decode: typeof decodeImageToImageData;
+  generate: typeof generateSphereLithophane;
+}>;
+
+const productionDependencies: GenerateDependencies = {
+  decode: decodeImageToImageData,
+  generate: generateSphereLithophane,
 };
 
-export async function generateFromFile(file: File, options: GenerateOptions = {}) {
-  const params = options.params ?? DEFAULT_PARAMS;
-  const decoded = await decodeImageToImageData(file, {
+export async function generateFromSnapshot(
+  snapshot: BuiltPartSnapshot,
+  dependencies: GenerateDependencies = productionDependencies,
+): Promise<BuiltPart> {
+  const params = snapshot.params;
+  const decoded = await dependencies.decode(snapshot.source.file, {
     imageScale: params.imageScale,
     flipHorizontal: params.flipHorizontal,
     flipVertical: params.flipVertical,
     paddingMode: params.paddingMode,
   });
-  return generateSphereLithophane(decoded.imageData, params);
+  const generated = dependencies.generate(decoded.imageData, params);
+  return Object.freeze({
+    geometry: generated.geometry,
+    summary: generated.summary,
+    workingImage: decoded.imageData,
+    snapshot,
+    fileName: deriveStlFileName(params),
+  });
+}
+
+export type GenerationRunCoordinator = Readonly<{
+  begin(): number;
+  invalidate(): void;
+  isCurrent(token: number): boolean;
+  publish(
+    token: number,
+    builtPart: BuiltPart,
+    publishCurrent: (builtPart: BuiltPart) => void,
+    disposeStale: (builtPart: BuiltPart) => void,
+  ): boolean;
+}>;
+
+export function createGenerationRunCoordinator(): GenerationRunCoordinator {
+  let currentToken = 0;
+  return {
+    begin() {
+      currentToken += 1;
+      return currentToken;
+    },
+    invalidate() {
+      currentToken += 1;
+    },
+    isCurrent(token) {
+      return token === currentToken;
+    },
+    publish(token, builtPart, publishCurrent, disposeStale) {
+      if (token !== currentToken) {
+        disposeStale(builtPart);
+        return false;
+      }
+      publishCurrent(builtPart);
+      return true;
+    },
+  };
 }
 
 export function toGenerateErrorMessage(err: unknown): string {
