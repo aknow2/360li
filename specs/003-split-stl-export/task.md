@@ -43,7 +43,7 @@ Commit boundary: Phase 0 only. Prerequisites: none; this phase occurs before **a
 
 Commit boundary: Phase 1 only. Prerequisites: reviewed Phase 0.
 
-- [ ] **T1.1 — Add persistable split numeric parameters and raw-draft validation**
+- [x] **T1.1 — Add persistable split numeric parameters and raw-draft validation**
   - Prerequisites: T0.2.
   - Target files: `src/domain/params.ts`, `src/domain/validation.ts`, `tests/unit/validation.test.ts`.
   - Unit of work: add the three numeric defaults and the `SplitField`/`SplitInputDraft`, `splitDraftFromParams`, `applySplitDraft`, and draft-aware validation contracts; retain finite fractional/out-of-range values without truncation or clamp.
@@ -56,7 +56,7 @@ Commit boundary: Phase 1 only. Prerequisites: reviewed Phase 0.
   - Definition of Done: raw strings render exactly; empty/non-finite drafts retain last coherent numeric params but authoritatively block Build; all finite values persist unrounded; legacy non-split validation behavior remains intact.
   - Trace: FR-002..FR-004, FR-025, FR-027; AC-006; SC-007; MVP-001, MVP-014, MVP-016.
 
-- [ ] **T1.2 — Implement v1 field-by-field split persistence migration**
+- [x] **T1.2 — Implement v1 field-by-field split persistence migration**
   - Prerequisites: T1.1.
   - Target files: `src/domain/preferences.ts`, `tests/unit/preferences.test.ts`.
   - Unit of work: preserve envelope/key v1 and migrate each split field independently; never serialize File, geometry, working image, Built Part, or transient blank/non-finite draft.
@@ -69,7 +69,7 @@ Commit boundary: Phase 1 only. Prerequisites: reviewed Phase 0.
   - Definition of Done: storage key and version remain v1; split fields bypass `intFrom`; only parseable numeric split state is saved; reload restores settings only and starts without image, Preview, or export readiness.
   - Trace: FR-002, FR-029, FR-030, FR-031; AC-007; SC-001, SC-007; MVP-001, MVP-016, MVP-017.
 
-- [ ] **T1.3 — Render exact split controls with nearby raw-field errors**
+- [x] **T1.3 — Render exact split controls with nearby raw-field errors**
   - Prerequisites: T1.1.
   - Target files: `src/components/Controls.tsx`, `tests/unit/validation.test.ts`.
   - Unit of work: add the three exact labels and string-controlled number inputs; route their changes through split-draft handling rather than `numberOr`/`intOr`.

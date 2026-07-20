@@ -17,7 +17,14 @@ export type LithophaneParams = {
   flipVertical: boolean;
   paddingMode: 'pad' | 'stretch';
   thicknessDirection: 'outward' | 'inward';
+  horizontalSplitCount: number;
+  verticalSplitCount: number;
+  splitIndex: number;
 };
+
+export type SplitField = 'horizontalSplitCount' | 'verticalSplitCount' | 'splitIndex';
+
+export type SplitInputDraft = Record<SplitField, string>;
 
 export const DEFAULT_PARAMS: LithophaneParams = {
   radiusMm: 60,
@@ -38,4 +45,7 @@ export const DEFAULT_PARAMS: LithophaneParams = {
   flipVertical: false,
   paddingMode: 'pad',
   thicknessDirection: 'outward',
+  horizontalSplitCount: 1,
+  verticalSplitCount: 1,
+  splitIndex: 1,
 };

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
 import type { TestContext } from 'node:test';
-import { DEFAULT_PARAMS, type LithophaneParams } from '../../src/domain/params';
+import { DEFAULT_PARAMS, type LithophaneParams, type SplitField } from '../../src/domain/params';
 import { generateSphereLithophane } from '../../src/lithophane/sphereLithophane';
 import { exportGeometryToStlBlob } from '../../src/three/exporter';
 
@@ -13,7 +13,8 @@ const manifestPath = resolve(fixturesDirectory, 'legacy-1x1-geometry.json');
 type FixtureCase = {
   id: string;
   image: { width: number; height: number; recipe: string };
-  params: LithophaneParams;
+  /** Immutable Phase 0 recipe, deliberately predating split parameters. */
+  params: Omit<LithophaneParams, SplitField>;
   geometry: {
     attributes: Record<string, { byteLength: number; sha256: string }>;
     index: { constructor: string; byteLength: number; sha256: string };
@@ -70,9 +71,10 @@ function makeImageData(caseId: string, width: number, height: number): ImageData
 }
 
 async function capture(fixture: FixtureCase) {
+  const params = effectiveFixtureParams(fixture);
   const generated = generateSphereLithophane(
     makeImageData(fixture.id, fixture.image.width, fixture.image.height),
-    fixture.params,
+    params,
   );
   try {
     const stl = new Uint8Array(await exportGeometryToStlBlob(generated.geometry).arrayBuffer());
@@ -81,6 +83,23 @@ async function capture(fixture: FixtureCase) {
     generated.geometry.dispose();
     throw error;
   }
+}
+
+function effectiveFixtureParams(fixture: FixtureCase): LithophaneParams {
+  return {
+    ...fixture.params,
+    horizontalSplitCount: 1,
+    verticalSplitCount: 1,
+    splitIndex: 1,
+  };
+}
+
+function legacyRecipe(params: LithophaneParams): Omit<LithophaneParams, SplitField> {
+  const recipe = { ...params } as Record<string, unknown>;
+  Reflect.deleteProperty(recipe, 'horizontalSplitCount');
+  Reflect.deleteProperty(recipe, 'verticalSplitCount');
+  Reflect.deleteProperty(recipe, 'splitIndex');
+  return recipe as Omit<LithophaneParams, SplitField>;
 }
 
 function assertGeometry(fixture: FixtureCase, captureResult: Awaited<ReturnType<typeof capture>>) {
@@ -120,10 +139,19 @@ async function readVerifiedManifest(): Promise<[FixtureCase, FixtureCase]> {
   assert.ok(outward && inward, 'fixture manifest must contain both exact cases');
   assert.deepEqual(outward.image, outwardImage);
   assert.equal(outward.stl.file, 'legacy-1x1-outward.stl');
-  assert.deepEqual(outward.params, DEFAULT_PARAMS);
+  assert.deepEqual(outward.params, legacyRecipe(DEFAULT_PARAMS));
   assert.deepEqual(inward.image, inwardImage);
   assert.equal(inward.stl.file, 'legacy-1x1-holes-stand-inward.stl');
-  assert.deepEqual(inward.params, inwardParams);
+  assert.deepEqual(inward.params, legacyRecipe(inwardParams));
+  for (const fixture of [outward, inward]) {
+    const { horizontalSplitCount, verticalSplitCount, splitIndex } = effectiveFixtureParams(fixture);
+    const effectiveSplitTuple = { horizontalSplitCount, verticalSplitCount, splitIndex };
+    assert.deepEqual(effectiveSplitTuple, {
+      horizontalSplitCount: 1,
+      verticalSplitCount: 1,
+      splitIndex: 1,
+    });
+  }
   return [outward, inward];
 }
 

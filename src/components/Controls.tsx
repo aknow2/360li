@@ -1,4 +1,4 @@
-import type { LithophaneParams } from '../domain/params';
+import type { LithophaneParams, SplitField, SplitInputDraft } from '../domain/params';
 import type { AnimationSettings, CenterLightSettings, RotationAxis } from '../three/scene';
 
 type ControlsProps = {
@@ -12,6 +12,8 @@ type ControlsProps = {
   paramsErrorField?: string | null;
   paramsErrorMessage?: string | null;
   onChangeParams?: (next: LithophaneParams) => void;
+  splitDraft?: SplitInputDraft;
+  onChangeSplitDraft?: (field: SplitField, raw: string) => void;
   paramsEnabled?: boolean;
   buildEnabled?: boolean;
   onBuild?: () => void;
@@ -45,6 +47,8 @@ export function Controls({
   paramsErrorField,
   paramsErrorMessage,
   onChangeParams,
+  splitDraft,
+  onChangeSplitDraft,
   paramsEnabled,
   buildEnabled,
   onBuild,
@@ -558,6 +562,51 @@ export function Controls({
                   }}
                 />
                 {paramsErrorField === 'heightSegments' ? (
+                  <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
+                    {paramsErrorMessage}
+                  </div>
+                ) : null}
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Horizontal split count</span>
+                <input
+                  type="number"
+                  step="any"
+                  value={splitDraft?.horizontalSplitCount ?? String(params?.horizontalSplitCount ?? '')}
+                  onChange={(e) => onChangeSplitDraft?.('horizontalSplitCount', e.currentTarget.value)}
+                />
+                {paramsErrorField === 'horizontalSplitCount' ? (
+                  <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
+                    {paramsErrorMessage}
+                  </div>
+                ) : null}
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Vertical split count</span>
+                <input
+                  type="number"
+                  step="any"
+                  value={splitDraft?.verticalSplitCount ?? String(params?.verticalSplitCount ?? '')}
+                  onChange={(e) => onChangeSplitDraft?.('verticalSplitCount', e.currentTarget.value)}
+                />
+                {paramsErrorField === 'verticalSplitCount' ? (
+                  <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
+                    {paramsErrorMessage}
+                  </div>
+                ) : null}
+              </label>
+
+              <label style={{ display: 'grid', gap: 6 }}>
+                <span>Split Index</span>
+                <input
+                  type="number"
+                  step="any"
+                  value={splitDraft?.splitIndex ?? String(params?.splitIndex ?? '')}
+                  onChange={(e) => onChangeSplitDraft?.('splitIndex', e.currentTarget.value)}
+                />
+                {paramsErrorField === 'splitIndex' ? (
                   <div role="alert" style={{ fontSize: 12, color: 'crimson' }}>
                     {paramsErrorMessage}
                   </div>

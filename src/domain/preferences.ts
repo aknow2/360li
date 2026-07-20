@@ -69,6 +69,9 @@ function readParams(value: unknown): LithophaneParams {
       value.thicknessDirection === 'outward' || value.thicknessDirection === 'inward'
         ? value.thicknessDirection
         : DEFAULT_PARAMS.thicknessDirection,
+    horizontalSplitCount: numberFrom(value.horizontalSplitCount, DEFAULT_PARAMS.horizontalSplitCount),
+    verticalSplitCount: numberFrom(value.verticalSplitCount, DEFAULT_PARAMS.verticalSplitCount),
+    splitIndex: numberFrom(value.splitIndex, DEFAULT_PARAMS.splitIndex),
   };
 }
 
@@ -96,6 +99,15 @@ function readCenterLightSettings(value: unknown): CenterLightSettings {
   return {
     enabled: booleanFrom(value.enabled, defaultCenterLightSettings.enabled),
     intensity: numberFrom(value.intensity, defaultCenterLightSettings.intensity),
+  };
+}
+
+function persistablePreferences(settings: AppPreferences): AppPreferences {
+  return {
+    params: readParams(settings.params),
+    showTexture: booleanFrom(settings.showTexture, defaultPreferences.showTexture),
+    animationSettings: readAnimationSettings(settings.animationSettings),
+    centerLightSettings: readCenterLightSettings(settings.centerLightSettings),
   };
 }
 
@@ -134,17 +146,23 @@ export function loadPreferences(): AppPreferences {
 }
 
 export function savePreferences(settings: AppPreferences): void {
-  cachedPreferences = settings;
+  const persisted = persistablePreferences(settings);
+  cachedPreferences = persisted;
 
   try {
     window.localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({
         version: STORAGE_VERSION,
-        settings,
+        settings: persisted,
       }),
     );
   } catch {
     // localStorage can fail in private browsing or when storage is full.
   }
+}
+
+/** Test-only cache isolation for the dependency-free Vite SSR test modules. */
+export function __resetPreferencesForTests(): void {
+  cachedPreferences = null;
 }
