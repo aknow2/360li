@@ -182,7 +182,7 @@ Commit boundary: Phase 4 only. Prerequisites: reviewed Phase 3.
 
 Commit boundary: Phase 5 only. Prerequisites: reviewed Phase 4.
 
-- [ ] **T5.1 — Clip tetrahedra deterministically at selected-cell boundaries**
+- [x] **T5.1 — Clip tetrahedra deterministically at selected-cell boundaries**
   - Prerequisites: T4.1, T2.1.
   - Target files: `src/lithophane/tetraClip.ts`, `tests/unit/tetraClip.test.ts`.
   - Unit of work: implement U source ownership and lower/upper V cone clipping with Float64 edge keys, provenance-preserving ordered faces, deterministic cap triangulation, and degenerate rejection while preserving T4.1's canonical shell/collar `I-O`, collar/taper `CI-CO`, and taper/tube `SI-SO` ownership.
