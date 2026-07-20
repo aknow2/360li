@@ -157,22 +157,26 @@ Commit boundary: Phase 4 only. Prerequisites: reviewed Phase 3.
 - [ ] **T4.1 — Build the unrotated conforming shell/hole/stand tetra complex**
   - Prerequisites: T2.1, T3.3.
   - Target files: `src/lithophane/partSolid.ts`, `src/lithophane/sphereLithophane.ts`, `tests/integration/spherePartGeometry.test.ts`.
-  - Unit of work: replace the contradicted diagnostic stand join with the split-path-only conforming rule. Keep sampled shell cut-ring `I/O` unchanged; create distinct stand top rings `IT/OT`; compute `globalTopMin=min O(u).y` from all `W` canonical U samples using the frozen image/params; set shared `bottomY=globalTopMin-clamp(holeDiameterMm*0.25,3,12)`; tetrahedralize ordered transition cross-sections `I -> O -> OT -> IT` and `IT/OT`-to-bottom tube hexahedra with Float64 canonical IDs. Route only non-1×1 tuples to this diagnostic path; exact public 1×1 must return through untouched legacy code before any split sampling/allocation.
+  - Unit of work: replace both contradicted stand joins with the reviewed split-path-only collar / taper / tube construction. Keep sampled shell cut-ring `I/O` exact; compute `theta`, `s`, `y0`, `delta`, `halfDelta`, every actual `tau_k`, `q`, clamped `w/h`, `tauMin`, `j`, `Yradial`, `YcutMin`, `Yc`, `Ys`, and `Yb` in Float64 from frozen Build data and canonical all-`W` order. Create canonical modulo-`W` `CI/CO`, `SI/SO`, `BI/BO`; tetrahedralize the three disjoint annular layers with the mandated sector triangles and fixed 3-tetra staircase; preserve the open lumen and only the `BI/BO` annular bottom. Route only non-1×1 tuples here; exact public 1×1 must return through untouched legacy code before every split sample/scalar/allocation.
   - Tests to write first:
-    - For outward and inward 12×8 stand cases, diagnostic split-path tetrahedra are positive and every shell/transition `I-O` plus transition/tube `IT-OT` face occurs exactly twice with opposite directed winding — expected red: current legacy-shaped join reports the independently reproduced same-winding interface conflicts.
-    - `I/O` retain the existing sampled radii/brightness/ring row; `IT` uses legacy base-ring X/Z with `Y=O.y`; `OT` uses the same Y and exact wall-thickness radial offset — expected red: distinct stand top canonical vertices/rules are absent.
-    - Single-column Builds each evaluate all `W` `O(u).y` samples, derive byte-identical Float64 then Float32 stand top/base coordinates, share one planar `bottomY`, and contain no inverted/zero-height tube cell — expected red: selected-column-local top/base calculation differs.
-    - Inward canonical coincidence such as `O==IT` produces the deterministic triangular transition and skips only identity-proven zero-volume duplicates — expected red: degenerate shared-face assumption or tolerance repair remains.
-    - Pole and seam IDs are welded by canonical identity, not tolerance — expected red: duplicate/seam cells occur.
-    - Bottom/top holes and stand leave lumens open with an annular bottom and no disk/cap — expected red: lumen is capped or interface is nonconforming.
-    - Public 1×1 still matches both legacy byte fixtures — expected red: new routing changes legacy output.
+    - Outward and inward use the exact preserved `I/O` formulas and one identical collar / taper / tube topology — expected red: a mode-specific `O==IT` or legacy transition branch remains.
+    - Brightness-varying `O` preserves every actual `tau_k`; any required zero/non-positive sampled thickness fails closed instead of inventing material — expected red: thickness is flattened, substituted, or accepted.
+    - South, equator-quantized, and slightly-north cuts prove strict exterior collar placement via `L_k` and `Yradial` coverage for every radius `q..q+w` — expected red: exterior placement is unproved or fails north of the equator.
+    - Wall widths `w=0`, below/equal/above projected relief, and `w=2R` behave exactly: zero emits no stand layers; positive widths keep three disjoint positive-height layers and taper width `(1-lambda)*s*tau+lambda*w>0` — expected red: topology branches, overlaps, collapses, or caps the lumen.
+    - Minimum validated `W=8` and one-segment columns meet only at canonical U faces — expected red: seam/reflex ownership or column-local construction differs.
+    - Shell/collar `I-O`, collar/taper `CI-CO`, and taper/tube `SI-SO` each use the global diagonal and occur exactly twice with opposite directed winding — expected red: a named interface is missing, duplicated, or same-directed.
+    - Independent column Builds perform all-W canonical-order reductions and produce byte-identical Float64 then Float32 scalars and collar/stand/bottom coordinates — expected red: selected-column order or local extrema differ.
+    - Every fixed-staircase tetra has a positive prescribed raw determinant without vertex swapping — expected red: a negative determinant is silently repaired or accepted.
+    - Per-cell tetra volume sum equals oriented boundary volume and sibling cells have no interior overlap — expected red: the staircase loses or double-counts volume.
+    - Lumen `I -> CI -> SI -> BI` remains open and only `BI/BO` forms the annular bottom — expected red: a disk/cap or extra component appears.
+    - Exact public 1×1/Index 1 returns before every split sample/scalar/allocation and both legacy geometry/STL fixtures remain byte-identical — expected red: split diagnostics perturb legacy bytes or coordinates.
   - Red/green command: `TEST_MODULE=spherePartGeometry npm test && TEST_MODULE=exportParity npm test`.
-  - Definition of Done: split work uses Float64 until final output; all-W sampling is limited to the cut-ring values needed for shared `globalTopMin`; transition/tube faces use exact canonical identity and opposite winding; only mathematically zero-volume identity duplicates are skipped; outer/inner/wall provenance and UV/material intent are retained; legacy full-sphere routine is called unchanged before split allocation or sampling for exact 1×1/Index 1. This task remains unchecked until the corrected tests and implementation pass; the contradiction/replan itself is not completion.
-  - Trace: FR-015..FR-020, FR-022, FR-026; AC-003..AC-005; SC-001, SC-005; MVP-007, MVP-008, MVP-010, MVP-012, MVP-015.
+  - Definition of Done: split work uses Float64 until final output; all-W work is limited to required cut-ring samples/scalars/rings; the three named interfaces use exact canonical IDs, one global diagonal, and opposite winding; prescribed tetra order is never swapped; determinant, volume-sum, non-overlap, open-lumen, annular-bottom, `w===0`, fail-closed thickness, and cross-Build tests pass; provenance and UV/material intent are retained; legacy full-sphere is called unchanged before every split operation for exact 1×1/Index 1. T4.1 remains unchecked until these red-first tests and implementation pass; documenting the second replan is not completion.
+  - Trace: FR-015..FR-020, FR-022, FR-026, FR-032; AC-003..AC-005; SC-001, SC-004, SC-005; MVP-007..MVP-010, MVP-012, MVP-014..MVP-016.
 
   Phase 4 quality gate: `TEST_MODULE=spherePartGeometry npm test && TEST_MODULE=exportParity npm test && npm test && npm run test:typecheck && npm run lint && npm run build`.
 
-  Stop/replan: distinct split-path `IT/OT` interfaces cannot be conforming while exact 1×1 bypasses all split work; adjacent column Builds do not reproduce identical Float64 then Float32 stand coordinates; or pole/stand cells require tolerance-based welding.
+  Stop/replan: invalid/nonfinite required scalar; `s==0`, `cos(halfDelta)<=0`, or pole join; enabled `tauMin<=0`; non-strict `YcutMin>Yc>Ys>Yb`; non-positive prescribed raw determinant; tetra/boundary volume mismatch; named interface not exactly twice/opposite; Float64 or Float32 cross-Build mismatch; Float32 collapse at extreme `w`; intersection, lumen cap, or multiple components; or legacy byte change. The first legacy same-side/same-winding contradiction and the just-disproved `IT/OT + globalTopMin` replan necessitate this second replan and do not complete Phase 4.
 
 ## Phase 5 — Cell partition, extraction, and runtime topology gate
 
@@ -181,15 +185,15 @@ Commit boundary: Phase 5 only. Prerequisites: reviewed Phase 4.
 - [ ] **T5.1 — Clip tetrahedra deterministically at selected-cell boundaries**
   - Prerequisites: T4.1, T2.1.
   - Target files: `src/lithophane/tetraClip.ts`, `tests/unit/tetraClip.test.ts`.
-  - Unit of work: implement U source ownership and lower/upper V cone clipping with Float64 edge keys, provenance-preserving ordered faces, deterministic cap triangulation, and degenerate rejection while preserving the canonical shell/transition `I-O` and transition/tube `IT-OT` ownership established by T4.1.
+  - Unit of work: implement U source ownership and lower/upper V cone clipping with Float64 edge keys, provenance-preserving ordered faces, deterministic cap triangulation, and degenerate rejection while preserving T4.1's canonical shell/collar `I-O`, collar/taper `CI-CO`, and taper/tube `SI-SO` ownership.
   - Tests to write first:
     - Neighboring tetrahedra share the same intersection ID and Float32 coordinate — expected red: cut vertices differ.
     - Closed-halfspace cone contact has half-open volume ownership and no duplicated positive volume — expected red: boundary ownership is ambiguous.
     - Face normalization/fan triangulation is deterministic and outward — expected red: face order/winding varies.
-    - Clipping preserves exact opposite-winding cancellation for subdivided `I-O` and `IT-OT` interface faces; a same-directed pair is rejected as provenance failure — expected red: old degenerate/shared-face handling retains or flips a conflict.
+    - Clipping preserves exact twice/opposite cancellation for subdivided `I-O`, `CI-CO`, and `SI-SO`; missing, multiply-owned, or same-directed faces are rejected — expected red: old shared-face handling retains, flips, or welds a conflict.
     - Degenerate clipped cells/faces are rejected rather than published — expected red: zero-volume output survives.
   - Red/green command: `TEST_MODULE=tetraClip npm test`.
-  - Definition of Done: U is selected by integer source segment only; stand/transition rows use the two approved cone scalars; named conforming interfaces retain canonical identity through clipping; no coordinate-tolerance matching, offset, kerf, clearance, or extra wall thickness is introduced.
+  - Definition of Done: U is selected by integer source segment only; collar/taper/tube rows use the two approved cone scalars; all three named interfaces retain canonical identity through clipping; no coordinate-tolerance matching, offset, kerf, clearance, or extra wall thickness is introduced.
   - Trace: FR-017..FR-020, FR-025; AC-003, AC-004; SC-004, SC-005; MVP-008..MVP-010, MVP-014.
 
 - [ ] **T5.2 — Extract grouped boundary mesh and reject invalid solids before publication**
@@ -199,14 +203,14 @@ Commit boundary: Phase 5 only. Prerequisites: reviewed Phase 4.
   - Tests to write first:
     - Closed tetrahedron and annulus are accepted with outward volume — expected red: validator/extractor absent.
     - Open edge, duplicate/same-winding face, non-manifold edge, disconnected component, zero volume, and self-intersection are rejected — expected red: invalid meshes pass.
-    - Provenance conflict/cancellation failure, including same-winding or non-paired `I-O` / `IT-OT` interfaces, reports generation failure — expected red: conflict silently emits geometry.
+    - Provenance conflict/cancellation failure, including non-paired or same-winding `I-O`, `CI-CO`, or `SI-SO`, reports generation failure — expected red: conflict silently emits geometry.
   - Red/green command: `TEST_MODULE=meshTopology npm test`.
   - Definition of Done: every edge has exactly two opposite incidents, exactly one component, finite positive volume, and no prohibited triangle intersection; failure is recoverable `GENERATION_FAILED` and no invalid geometry is returned.
   - Trace: FR-016, FR-017, FR-032; AC-003; SC-005; MVP-007, MVP-008, MVP-016.
 
   Phase 5 quality gate: `TEST_MODULE=tetraClip npm test && TEST_MODULE=meshTopology npm test && npm test && npm run test:typecheck && npm run lint && npm run build`.
 
-  Stop/replan: independently generated neighbors, including stand top/base rings, differ after Float32 conversion; clipped faces or named `I-O` / `IT-OT` interfaces cannot cancel by provenance and opposite winding; self-intersection validation exceeds budget; or any successful result has multiple components.
+  Stop/replan: invalid/nonfinite scalar; `s==0`, `cos(halfDelta)<=0`, or pole join; enabled `tauMin<=0`; non-strict Y ordering; non-positive prescribed determinant; volume mismatch; a named interface is not exactly twice/opposite; independent Builds differ in Float64/Float32; extreme `w` collapses after Float32; intersection, lumen cap, or multiple components; self-intersection validation exceeds budget; or legacy bytes change.
 
 ## Phase 6 — Full generator integration and geometry matrix
 
@@ -217,12 +221,12 @@ Commit boundary: Phase 6 only. Prerequisites: reviewed Phase 5.
   - Target files: `src/lithophane/sphereLithophane.ts`, `src/domain/generate.ts`, `src/lithophane/imageDecode.ts`, `tests/integration/spherePartGeometry.test.ts`.
   - Unit of work: dispatch legacy versus split paths, preserve existing working-image sampling and final-direction image UV, rotate the completed solid exactly once, and surface empty/non-connected/resource failure atomically.
   - Tests to write first:
-    - 2×2, 3×2, and 4×3 all-index parts select only their requested cell and share exact adjacent boundaries, including byte-identical Float64 then Float32 stand top/base coordinates derived from all-W `globalTopMin` — expected red: split dispatch/geometry or global stand plane is absent.
+    - 2×2, 3×2, and 4×3 all-index parts select only their requested cell and share exact adjacent boundaries, including byte-identical all-W Float64 then Float32 scalars and collar/stand/bottom coordinates — expected red: split dispatch/geometry or canonical-order global reduction is absent.
     - Nonzero hole rotation moves shell/holes/stand/walls together while final image orientation remains fixed — expected red: split boundary/image frame is wrong.
-    - Outward/inward, brightness/contrast/minCos, flip, pad/stretch, seam/poles, and one-segment cells preserve the legacy sphere cut ring/relief behavior while stand geometry follows the conforming `I/O/OT/IT` and shared-bottom rule — expected red: compatibility matrix or corrected stand rule fails.
+    - Outward/inward, brightness-varying `O`, south/equator/north cuts, wall widths 0/below/equal/above/`2R`, minimum `W`, flip, pad/stretch, seam/poles, and one-segment columns preserve shell relief while stand geometry follows the collar/taper/tube rules — expected red: the required construction matrix fails.
     - Empty or disconnected selected cell throws recoverable error and publishes no partial geometry — expected red: invalid result is returned.
   - Red/green command: `TEST_MODULE=spherePartGeometry npm test`.
-  - Definition of Done: `R=Ry(spin)*Rx(tilt)` applies after local closure; image UV derives from final direction without per-part crop/rescale; decode closes ImageBitmap; only selected source sectors/bands become volume while the lightweight all-W cut-ring sampling needed for `globalTopMin` is deterministic; all ring/face temporaries release before Built Part publication.
+  - Definition of Done: `R=Ry(spin)*Rx(tilt)` applies after local closure; image UV derives from final direction without per-part crop/rescale; decode closes ImageBitmap; only selected source sectors/bands become volume while the lightweight canonical all-W cut-ring sampling/reduction is deterministic; all scalar/ring/face temporaries release before Built Part publication.
   - Trace: FR-006, FR-015, FR-021..FR-023, FR-025, FR-032; AC-003, AC-004; SC-004, SC-005; MVP-009..MVP-014, MVP-016.
 
 - [ ] **T6.2 — Prove STL parity, no foreign triangles, and legacy compatibility**
@@ -231,7 +235,7 @@ Commit boundary: Phase 6 only. Prerequisites: reviewed Phase 5.
   - Unit of work: extend fixture-only integration tests to parse binary STL and compare selected Built Part triangle coordinates/order/winding, foreign-part exclusion, and post-reparse boundary tolerance.
   - Tests to write first:
     - Every export triangle set/order/winding equals displayed Built Part geometry and contains zero other-index triangles — expected red: parity comparison absent.
-    - 2×2/3×2/4×3 neighboring STL boundary and stand top/base maximum difference is ≤0.00001 mm — expected red: reparse comparison or independently recomputed shared base differs.
+    - 2×2/3×2/4×3 neighboring STL boundary and collar/stand/bottom maximum difference is ≤0.00001 mm — expected red: reparse comparison or independently recomputed global geometry differs.
     - Both frozen 1×1 fixtures remain exact bytes after full integration — expected red: altered pipeline differs.
   - Red/green command: `TEST_MODULE=exportParity npm test && TEST_MODULE=spherePartGeometry npm test`.
   - Definition of Done: exporter never serializes texture/Preview helpers or regenerates; groups/indices are deterministic; all legacy fixture files are only read, never rewritten; no split optimization changes legacy vertex/index/group/rotation order.
@@ -239,7 +243,7 @@ Commit boundary: Phase 6 only. Prerequisites: reviewed Phase 5.
 
   Phase 6 quality gate: `TEST_MODULE=spherePartGeometry npm test && TEST_MODULE=exportParity npm test && npm test && npm run test:typecheck && npm run lint && npm run build`.
 
-  Stop/replan: a requested cell is mathematically valid but disconnected; the all-part union differs from the canonical split-path whole solid or has a surface gap/overlap; a non-adjacent self-intersection appears; stand top/base coordinates differ across independent Builds; or legacy bytes change.
+  Stop/replan: invalid/nonfinite scalar; `s==0`/`cos(halfDelta)<=0`/pole join; enabled `tauMin<=0`; non-strict Y ordering; non-positive prescribed determinant; volume mismatch; named-interface or cross-Build mismatch; Float32 collapse at extreme `w`; the all-part union has a gap/overlap, non-adjacent intersection, lumen cap, or multiple components; or legacy bytes change.
 
 ## Phase 7 — Snapshot Preview, split-only auto-fit, and cleanup
 
@@ -326,7 +330,7 @@ Commit boundary: Phase 8 only. Prerequisites: reviewed Phase 7 and approved `e2e
 | SC-001 | T0.2, T1.2, T4.1, T6.2, T8.2 |
 | SC-002 | T2.1, T6.1, T8.2 |
 | SC-003 | T2.1, T6.1 |
-| SC-004 | T5.1, T6.1, T6.2 |
+| SC-004 | T4.1, T5.1, T6.1, T6.2 |
 | SC-005 | T4.1, T5.2, T6.1, T8.2 |
 | SC-006 | T3.3, T6.2, T8.2 |
 | SC-007 | T1.1, T1.2, T1.3, T8.2 |
@@ -338,7 +342,7 @@ The orchestrator performs this audit after independent review of every phase; no
 
 - [ ] FR coverage: FR-001..FR-007 (T1.1–T2.1); FR-008..FR-014 (T3.1–T3.3, T6.2); FR-015..FR-020 (T4.1–T6.1); FR-021..FR-026 (T6.1–T7.2); FR-027..FR-031 (T1.1–T1.3); FR-032..FR-035 (T3.2, T5.2, T7.3, T8.1–T8.2).
 - [ ] AC coverage: AC-001 (T1.1, T2.1, T8.2); AC-002 (T3.1–T3.3, T7.2, T8.1); AC-003 (T4.1–T6.2, T8.2); AC-004 (T4.1–T7.2, T8.2); AC-005 (T0.2, T3.3, T4.1, T6.2, T7.2); AC-006 (T1.1, T1.3, T8.2); AC-007 (T1.2, T8.2); AC-008 (T7.1–T8.2).
-- [ ] SC coverage: SC-001 (T0.2/T1.2/T4.1/T6.2/T8.2); SC-002 (T2.1/T6.1/T8.2); SC-003 (T2.1/T6.1); SC-004 (T5.1/T6.1/T6.2); SC-005 (T4.1/T5.2/T6.1/T8.2); SC-006 (T3.3/T6.2/T8.2); SC-007 (T1.1–T1.3/T8.2); SC-008 (T7.3/T8.1/T8.2).
+- [ ] SC coverage: SC-001 (T0.2/T1.2/T4.1/T6.2/T8.2); SC-002 (T2.1/T6.1/T8.2); SC-003 (T2.1/T6.1); SC-004 (T4.1/T5.1/T6.1/T6.2); SC-005 (T4.1/T5.2/T6.1/T8.2); SC-006 (T3.3/T6.2/T8.2); SC-007 (T1.1–T1.3/T8.2); SC-008 (T7.3/T8.1/T8.2).
 - [ ] MVP coverage: MVP-001 (T1.1–T1.3); MVP-002–003 (T2.1); MVP-004–006 (T3.1–T3.3/T7.2); MVP-007–010 (T4.1–T6.2); MVP-011–013 (T6.1/T7.2); MVP-014 (T1.1/T2.1/T5.1/T6.1); MVP-015 (T0.2/T3.3/T4.1/T6.2/T7.2); MVP-016 (T1.1–T1.3/T3.2/T5.2/T6.1/T7.3/T8.1); MVP-017 (T1.2); MVP-018 (T0.1/T7.1–T8.2).
-- [ ] Compatibility audit: root `tsconfig.json` and its project-reference graph are byte-identical; no dependency/package-lock change; public 1×1 bypasses all split work and its legacy stand coordinates/bytes/Preview behavior match fixtures; split stand joins satisfy the `I/O/OT/IT`, all-W `globalTopMin`, shared `bottomY`, and cross-Build coordinate rules; and `workingImage.data` hash/bytes are unchanged by all Preview paths.
+- [ ] Compatibility audit: root `tsconfig.json` and its project-reference graph are byte-identical; no dependency/package-lock change; public 1×1 bypasses every split sample/scalar/allocation and its legacy stand coordinates/bytes/Preview behavior match fixtures; split stand satisfies the approved `I/O`, `CI/CO`, `SI/SO`, `BI/BO`, all-W scalar, three-interface, open-lumen, annular-bottom, and cross-Build rules; and `workingImage.data` hash/bytes are unchanged by all Preview paths.
 - [ ] Delivery audit: all phase gates pass, all stop/replan conditions were avoided or independently resolved, E2E/slicer evidence is complete, only approved scope changed, and open questions remain **none**.

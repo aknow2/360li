@@ -105,8 +105,12 @@
 - **EC-014**: Build の途中失敗またはリソース不足では部分的・開いた geometry を Preview / Export へ公開せず、UI を再操作可能な状態へ戻す
 - **EC-015**: 旧形式、欠落フィールド、不正型、破損 JSON の保存設定では、欠落・解釈不能な分割値だけをデフォルトへ戻し、アプリを起動不能にしない
 - **EC-016**: 横または縦の一方だけが `1` の場合、その方向には新しい分割壁を追加せず、もう一方の方向に必要な境界だけを閉じる
-- **EC-017**: 下穴スタンド付き分割生成では、要求された列が1列だけでも全 `W` 個の canonical U cut-ring sample から同じ `globalTopMin` を再計算し、別々に Build した隣接列でスタンド上面・底面座標を一致させる
-- **EC-018**: inward などで canonical 点が一致して遷移断面 `I -> O -> OT -> IT` の一部が縮退する場合は、座標 tolerance による welding や面の重複で補修せず、canonical identity で数学的にゼロ体積の重複部分だけを除外する
+- **EC-017**: 下穴スタンド付き分割生成では、要求された列が1列だけでも凍結した Build data から全 `W` 個の canonical cut-ring thickness `tau_k` を canonical 順で sampling/reduction し、`tauMin`, `YcutMin`, `Yc`, `Ys`, `Yb` を同じ Float64 値として再計算する。別々に Build した隣接列は collar / taper / tube の全共有座標を Float64 と Float32 の双方で一致させる
+- **EC-018**: outward / inward は同じ shell / collar / taper / tube topology を使い、`O==IT` のような特殊分岐、coordinate tolerance identity/welding、tetra vertex の暗黙 swap を行わない。規定順の raw determinant が正でない場合は生成を停止して replan する
+- **EC-019**: `standWallThicknessMm` の clamp 結果 `w` が `0` の場合、split path でも shell の下穴 rim と open lumen を正確に維持し、collar / taper / tube を一切生成しない。`w>0` では projected shell relief より小さい・等しい・大きい場合および `w=2R` を同じ topology で扱う
+- **EC-020**: stand 有効時に必要な sampled `tau_k` のいずれかが非有限または `<=0`、`s==0`、`cos(halfDelta)<=0`、scalar の Y 順序が非 strict、または Float32 化で極端な `w` の layer が collapse する場合、不足 material を捏造せず回復可能な生成失敗にする
+- **EC-021**: cut ring が南側、赤道量子化、または僅かに北側でも、vertical collar は各 sector の retained shell half-space `L_k>=0` に対して厳密に exterior の `L_k<0` にあり、stand 半径 `q..q+w` は `Yradial` 以下で全て exterior に置く
+- **EC-022**: collar / taper / tube の内部は互いに disjoint で正の高さを持ち、lumen 境界 `I -> CI -> SI -> BI` を開いたまま維持する。底だけを `BI/BO` annulus で閉じ、disk/lumen cap、交差、複数 component を生成しない
 
 ## Requirements *(mandatory)*
 
@@ -134,13 +138,18 @@
 
 ### Split-path-only Bottom Stand Join
 
-- この節は split tuple が exact `H=1, V=1, Index=1` でない場合だけに適用する。exact public 1×1 は split allocation、canonical complex、全周 stand sampling をすべて bypass し、現行スタンド座標を含む legacy generator を byte-for-byte そのまま使用する
-- 下穴の cut ring の各 canonical U sample について、現行の sampled radius、brightness、bottom-hole ring-row 式から得る shell inner / outer 点をそれぞれ `I(u)` / `O(u)` とする。outer は球中心から遠い radial shell point として定義するため、南側の bottom cut latitude では常により小さい（より負の）Y を持つ点となり、厚み方向固有の shortcut には依存しない。この shell cut ring 自体は変更しない
-- stand inner-top `IT(u)` は legacy base-sphere ring と同じ X/Z（したがって lumen radius は同じ）かつ `Y=O(u).y` とする。stand outer-top `OT(u)` は同じ Y とし、同じ X/Z radial direction へ現行の `standWallThicknessMm` offset を加える
-- Build 時に凍結した同一 image/params を使い、要求列外も含む全 `W` 個の canonical U ring sample の `O(u).y` から `globalTopMin=min O(u).y` を求める。`standHeightMm=clamp(holeDiameterMm*0.25,3,12)` を維持し、全周共通の planar `bottomY=globalTopMin-standHeightMm` を使う。これにより tube cell の反転・ゼロ高さを防ぎ、別々に Build した列でも同じ底面を再現する
-- 各 U segment の conforming transition 断面は ordered polygon `I -> O -> OT -> IT` とし、canonical 点が一致する場合（例: inward の `O==IT`）は三角形として扱う。隣接断面間を決定的な conforming prism/tetrahedra に分割し、shell とは exact `I-O` radial cut face、tube とは exact `IT-OT` top-annulus face を共有して、各 internal face が opposite winding で相殺されるようにする
-- tube hexahedra は `IT/OT` から `bottomY` 上の legacy-radius inner/outer bottom ring へ接続する。lumen と annular bottom を維持し、disk/cap は追加しない。canonical identity により同一点となる数学的ゼロ体積部分だけを除外し、coordinate tolerance welding は行わない
-- この conforming join は、同一面側へ重なる legacy shell-to-stand transition / annular tube を split generation にコピーしないための内部補正である。sphere cut ring、lumen radius、stand wall thickness、derived stand height、hole rotation、画像/厚み式は維持するが、legacy の overlapping/nonconforming internal stand join の保存は要件ではない
+- この節は split tuple が exact `H=1, V=1, Index=1` でない場合だけに適用する。exact public 1×1 は split allocation、canonical sample/scalar/reduction/allocation をすべて bypass し、現行スタンド座標を含む legacy generator を byte-for-byte そのまま使用する
+- `R=radiusMm`, `W=widthSegments`（検証済み `>=8`）, `T=heightSegments`, `g=bottomHole.ringVGrid`, `theta=pi*(1-g/T)`, `s=sin(theta)>0`, `y0=cos(theta)`, `delta=2*pi/W`, `halfDelta=delta/2` とする。`e_k` は canonical unit X/Z radial direction、`d_k=(s*e_k.x,y0,s*e_k.z)`、`tau_k>0` は実際に sampling した cut-ring thickness とする
+- shell vertex は正確に保存する。outward は `I_k=R*d_k`, `O_k=(R+tau_k)*d_k`、inward は `I_k=(R-tau_k)*d_k`, `O_k=R*d_k` とし、両方向で同じ topology を使う。stand 有効時に必要な `tau_k<=0` が1つでもあれば material を捏造せず split Build を回復可能に失敗させる
+- `q=R*s`, `w=clamp(standWallThicknessMm,0,2R)`, `h=clamp(holeDiameterMm*.25,3,12)`, `tauMin=min_k(tau_k)`, `j=min(h,tauMin)` とする。`tauMin` と後述の全 scalar reduction は、凍結した Build data から全 `W` sample を canonical 順に Float64 で処理する
+- sector `k` について `m_k=(e_k+e_(k+1))/(2*cos(halfDelta))`, `L_k(p)=s*cos(halfDelta)*p.y-y0*dot(m_k,p.xz)` とする。retained shell は `L_k>=0`、cut 下方の exterior は `L_k<0` である。`s>0` かつ `cos(halfDelta)>0` のため、cut ring からの `-Y` displacement は赤道または僅かに北側へ量子化された場合も strict negative となり、vertical collar は各 bottom-cut sector で厳密に exterior にある
+- `qCritical=(y0<0 ? q+w : q)`, `Yradial=y0*qCritical/s`, `YcutMin=min_k(min(I_k.y,O_k.y))`, `Yc=YcutMin-j`, `Ys=min(Yc,Yradial)-j`, `Yb=Ys-h` とする。これらは独立した列 Build が共有する global all-W Float64 scalar である。`Yradial` は全 stand radius `q..q+w` を exterior に収め、`YcutMin>Yc>Ys>Yb` を strict に満たす
+- collar は `CI_k=(I_k.x,Yc,I_k.z)`, `CO_k=(O_k.x,Yc,O_k.z)`、stand top は `SI_k=(q*e_k.x,Ys,q*e_k.z)`, `SO_k=((q+w)*e_k.x,Ys,(q+w)*e_k.z)`、bottom は `BI_k=(q*e_k.x,Yb,q*e_k.z)`, `BO_k=((q+w)*e_k.x,Yb,(q+w)*e_k.z)` とする。shell、collar-inner/outer、stand-top-inner/outer、stand-bottom-inner/outer には modulo-`W` canonical ID を割り当てる
+- 各 U sector は互いに interior-disjoint な3 annular layer、`I/O -> CI/CO` collar、`CI/CO -> SI/SO` taper、`SI/SO -> BI/BO` tube で構成する。material width は taper 内で `((1-lambda)*s*tau+lambda*w)>0` となり、`w>0` なら projected shell relief と比べて小・等・大および `w=2R` の全てを扱える。各 layer は正の高さを持ち、angular sector 同士は canonical U face だけで接する
+- exact named interface は shell/collar `I-O`、collar/taper `CI-CO`、taper/tube `SI-SO` である。同じ canonical ID と global face diagonal を使い、各 interface triangle を exactly twice / opposite directed winding にする。各 annular sector は `(inner_k,inner_(k+1),outer_(k+1))` と `(inner_k,outer_(k+1),outer_k)` で決定的に triangulate し、対応する triangle 間の prism を固定 3-tetra staircase で分割する。tetra vertex を暗黙に swap せず、規定順の raw determinant が正でなければ fail/replan する
+- lumen は `I -> CI -> SI -> BI` の内面に沿って開いたままで、bottom だけを `BI/BO` annulus で閉じる。collar / taper / tube の内部は互いに disjoint とし、disk/cap、tolerance identity/weld、`O==IT` 特殊分岐を追加しない。per-cell tetra volume sum は oriented boundary volume と一致し、cell 同士は non-overlap でなければならない
+- `w===0` は split-path stand 無効を意味し、exact shell hole rim と open lumen を保存して collar / taper / tube を生成しない。global validation と public 1×1 legacy behavior は変更しない
+- Replan record: 最初の Phase 4 診断では legacy transition/tube が claimed interface の同じ側を占め、positive tetra が同方向 winding になる contradiction を確認した。続く `I/O/OT/IT + globalTopMin` replan も、inward の `O==IT` 特殊縮退と可変 top に依存し、全方向・cut latitude・wall width で同一 topology、strict exterior、prescribed raw-positive determinant、exact interface cancellation を同時に証明できないことが判明した。このため Phase 4 は未完了のまま、上記 collar / taper / tube construction を第2 replan の唯一の実装規則とする
 
 ### Functional Requirements
 
@@ -158,24 +167,24 @@
 - **FR-012**: Export STL は再生成を行わず、その時点で Preview が参照している同一の生成済み geometry を唯一の入力として使用すること
 - **FR-013**: Built Part に記録された Build 時スナップショットを使い、1×1 / Index 1 の STL ファイル名は現行の `spherical-lithophane.stl` を維持し、分割時は `spherical-lithophane-h{H}-v{V}-part-{index}-of-{H*V}.stl` とすること
 - **FR-014**: 分割 STL は選択パーツの三角形だけを含み、他パーツ、球体全体、Preview 専用オブジェクト、テクスチャデータを含めないこと
-- **FR-015**: 分割処理は、現行設定で穴回転前に得られる sampled sphere shell、上下穴、および本仕様の split-path-only conforming stand join を選択ローカル分割セルで切り出して閉じ、その選択ソリッド全体へ現行の穴回転を適用すること。sphere cut ring、sampled radii/brightness、hole ring-row、lumen radius、wall thickness、derived stand height、画像/厚み式を維持し、legacy の overlapping/nonconforming internal stand join は分割結果として要求しない
+- **FR-015**: 分割処理は、現行設定で穴回転前に得られる sampled sphere shell、上下穴、および本仕様の split-path-only collar / taper / tube stand complex を選択ローカル分割セルで切り出して閉じ、その選択ソリッド全体へ現行の穴回転を適用すること。sphere cut ring、sampled radii/brightness、hole ring-row、clamped wall width、derived stand height、画像/厚み式を維持し、legacy の overlapping/nonconforming internal stand join は分割結果として要求しない
 - **FR-016**: 成功した各選択パーツは、正の体積を持つ単一の連結した閉ソリッドであり、開いたエッジ、非多様体エッジ、自己交差、遊離面、ゼロ面積三角形を含まないこと
 - **FR-017**: システムは、選択セルの切断位置で実際の外面と内面を接続する分割境界壁を生成し、すべての新しい切断輪郭を watertight に閉じること
 - **FR-018**: 隣接パーツの共有分割境界は、元のセグメント境界から導いた同一座標・同一分割を使い、別々に生成・STL 出力しても幾何学的に一致すること
-- **FR-019**: 分割境界に隙間、重なり代、オフセット、鋸しろ、勘合クリアランス、追加壁厚を加えず、同じ穴回転を適用した全パーツの和集合を同一入力の canonical split-path whole solid と一致させること。sphere shell と穴の外面・内面は legacy 1×1 と一致させるが、stand join の内部は本仕様の conforming correction を正とする
-- **FR-020**: 上穴、下穴、standWallThicknessMm を反映したスタンドがローカルセル境界を横切る場合、各パーツには conforming transition `I -> O -> OT -> IT` と tube の交差部分だけを含めること。全 `W` sample 由来の共通 `globalTopMin`、stand top rings、planar `bottomY` を別 Build でも同じ Float64 値から Float32 化し、意図した開口部・スタンド内腔を分割壁または disk/cap で塞がないこと
+- **FR-019**: 分割境界に隙間、重なり代、オフセット、鋸しろ、勘合クリアランス、追加壁厚を加えず、同じ穴回転を適用した全パーツの和集合を同一入力の canonical split-path whole solid と一致させること。sphere shell と穴の外面・内面は legacy 1×1 と一致させるが、stand 内部は本仕様の disjoint collar / taper / tube construction を正とする
+- **FR-020**: 上穴、下穴、`standWallThicknessMm` を反映した stand がローカルセル境界を横切る場合、各パーツには canonical shell/collar/taper/tube complex の交差部分だけを含めること。全 `W` sample の canonical-order reduction で得た `tauMin`, `YcutMin`, `Yc`, `Ys`, `Yb`、canonical ring ID、global diagonal を別 Build でも同じ Float64 値から Float32 化し、3 named interface を exactly twice/opposite winding で相殺する。`w===0` では stand layer を生成せず、意図した開口部・lumen を分割壁または disk/cap で塞がないこと
 - **FR-021**: holeLatitude / holeLongitude は現行どおり `R=Ry(spin)*Rx(tilt)` により、上下穴、スタンドに加えて選択シェルと分割壁も一体で回転すること。ローカル分割セルに対する穴・スタンドの所属 Index は変えず、画像・凹凸の最終モデル上の向きは現行どおり固定すること
 - **FR-022**: outward / inward の両厚み方向で、未分割モデルと同じ内外半径・明暗厚み分布を使い、分割壁はその地点の内外面を直接接続すること
 - **FR-023**: imageScale、flipHorizontal、flipVertical、paddingMode、brightnessCurve、contrast、minCos は未分割時と同じ順序・意味で作業用画像と厚みに適用し、その後も全パーツで最終方向由来の共通画像 UV を共有すること
 - **FR-024**: Show grayscale texture が有効な場合、選択パーツの既存外面だけへ Build 時スナップショットと同じ作業用画像・UV のテクスチャを表示し、内面・穴壁・スタンド壁・新しい分割壁にはテクスチャを引き伸ばさないこと。Show grayscale texture 自体の表示切替は再 Build なしで行えるが、未 Build の imageScale、flip、paddingMode 変更を表示中 Built Part のテクスチャへ先行適用しないこと
 - **FR-025**: Width / Height segments は未分割モデルの解像度であると同時に分割可能数の動的上限とし、分割のためにセグメント設定を暗黙変更しないこと
-- **FR-026**: Horizontal = 1、Vertical = 1、Index = 1 の場合は split work をすべて bypass して untouched legacy path を呼び、分割境界壁を一切追加せず、現行 stand coordinates を含む同一入力・既存パラメータに対する position / uv / index / material group、頂点数、三角形数、Preview、binary STL バイト列を機能追加前と同一にすること
+- **FR-026**: Horizontal = 1、Vertical = 1、Index = 1 の場合は every split sample/scalar/allocation を bypass して untouched legacy path を呼び、分割境界壁を一切追加せず、現行 stand coordinates を含む同一入力・既存パラメータに対する position / uv / index / material group、頂点数、三角形数、Preview、binary STL バイト列を機能追加前と同一にすること
 - **FR-027**: 無効な分割入力では該当フィールド付近に範囲と整数条件を含むエラーを表示し、値を丸める・切り捨てる・自動 clamp することなく Build を無効化すること
 - **FR-028**: 直前の成功結果が Preview に残っている場合、未 Build の入力変更または入力エラーがあっても Export はその表示中 geometry に限って許可し、現在の入力値からファイル名や形状を推測しないこと
 - **FR-029**: システムは、3つの分割パラメータを他のユーザー設定と同じローカル設定へ保存し、有効値をページ再読み込み後に復元すること
 - **FR-030**: 旧保存データで分割フィールドが欠落している場合は個別に `1` を補完し、不正型・非有限値は対応するデフォルトへ戻すこと。型として読めるが範囲外の値は黙って補正せず通常の入力エラーとして表示すること
 - **FR-031**: ページ再読み込み時は画像ファイル、生成済み geometry、Preview、STL 出力可能状態を復元せず、復元した設定で再度画像選択と Build を要求すること
-- **FR-032**: 選択セルに正の体積を持つ単一の閉ソリッドを生成できない場合、システムは回復可能な生成エラーを示し、不正 geometry の Preview / Export を許可しないこと
+- **FR-032**: 選択セルに正の体積を持つ単一の閉ソリッドを生成できない場合、または split stand の required scalar 非有限、`s==0`、`cos(halfDelta)<=0`、pole join、enabled `tauMin<=0`、non-strict Y ordering、non-positive prescribed determinant、volume mismatch、named-interface / cross-Build mismatch、extreme-`w` Float32 collapse、intersection、lumen cap、multiple components のいずれかを検出した場合、システムは回復可能な生成エラーを示し、不正 geometry の Preview / Export を許可しないこと
 - **FR-033**: Preview は小さな選択パーツでも全体を確認できるよう表示範囲を生成 geometry に合わせ、現行の回転・ズーム・照明・アニメーション操作を維持すること
 - **FR-034**: 本機能はブラウザ内だけで画像処理、geometry 生成、Preview、STL 出力、設定保存を完結し、公開 API、ネットワーク API、サーバー、アカウントを追加しないこと
 - **FR-035**: 新しい Source image を選択した場合は、旧画像から生成した Preview と Export 対象を直ちにクリアし、新しい画像で Build が成功するまで Export を無効化すること
@@ -184,8 +193,8 @@
 
 - **AC-001 (FR-001..FR-007)**: holeLatitude = 0、holeLongitude = 0 で方向マーカー付き画像を 3×2 に分割すると、Index 1..6 が定義どおりのローカル分割 UV 領域へ一意に対応し、10×5 セグメントでは横 4/3/3、縦 3/2 になる
 - **AC-002 (FR-008..FR-014, FR-028, FR-035)**: Build 後に入力値を変更しても Preview は変わらず、Export した STL の三角形集合と表示中 geometry が一致し、未 Build 値のパーツは含まれない。次の Build 開始時または新しい画像選択時には旧 Preview / Export がクリアされる
-- **AC-003 (FR-015..FR-020, FR-032)**: 代表的な全 Index を mesh 検証と一般的なスライサーで検査し、各成功結果が単一 watertight solid と認識され、shell/transition の `I-O` face と transition/tube の `IT-OT` face が opposite winding で相殺され、別 Build の共有境界・stand top/base 座標が一致する
-- **AC-004 (FR-021..FR-025)**: 上下穴、スタンド、非ゼロ穴回転、outward / inward、flip、pad / stretch、テクスチャ有無の組合せでも、ローカル分割境界が穴・スタンドと一体回転し、選択パーツの sphere cut ring・厚み・開口・テクスチャが legacy 1×1 の同じ最終領域と一致し、スタンドは split-path conforming join と共通 planar base の規則に一致する
+- **AC-003 (FR-015..FR-020, FR-032)**: 代表的な全 Index を mesh 検証と一般的なスライサーで検査し、各成功結果が単一 watertight solid と認識され、shell/collar `I-O`、collar/taper `CI-CO`、taper/tube `SI-SO` が exactly twice/opposite winding で相殺されることを確認する。規定順 determinant は全て raw-positive、per-cell tetra volume sum は oriented boundary volume と一致し、interior overlap はなく、別 Build の全 global scalar / collar / stand / bottom 座標が Float64 と Float32 で一致する
+- **AC-004 (FR-021..FR-025)**: 上下穴、スタンド、非ゼロ穴回転、outward / inward、flip、pad / stretch、テクスチャ有無の組合せでも、ローカル分割境界が穴・スタンドと一体回転し、選択パーツの sphere cut ring・厚み・開口・テクスチャが legacy 1×1 の同じ最終領域と一致する。split stand は south/equator/north cut と `w=0` / relief 未満 / 同値 / 超過 / `2R` で approved collar / taper / tube scalar・layer 規則に一致する
 - **AC-005 (FR-026)**: 1×1 / Index 1 の回帰 fixture で、geometry 属性、index、group、集計値、Preview、および binary STL の比較が完全一致する
 - **AC-006 (FR-027, FR-030)**: 小数、0、セグメント数超過、Index 超過、旧保存値を使った検証で、暗黙補正なしに対象フィールドのエラーと Build 無効状態を確認できる
 - **AC-007 (FR-029..FR-031)**: 3×2 / Index 5 を保存して再読み込みすると設定だけが復元され、画像未選択・Preview 空・Export 無効から開始する
@@ -233,8 +242,8 @@
 - **SC-001**: 新規利用・旧保存データの双方で初期値が 1×1 / Index 1 となり、代表 fixture すべてで機能追加前と geometry 属性・index・group・頂点数・三角形数・binary STL が完全一致する
 - **SC-002**: holeLatitude = 0、holeLongitude = 0 の方向マーカー付き作業用画像の 2×2 および 3×2 分割で、全 Index が規定の行優先ローカル分割 UV 領域へ100%正しく対応する
 - **SC-003**: `10×5 segments / 3×2 splits`、`11×7 / 4×3` を含む少なくとも5件の非可除組合せで、全セグメントがちょうど1セルへ割り当てられ、欠落・外面重複が0件である
-- **SC-004**: 少なくとも 2×2、3×2、4×3 の全パーツについて、隣接境界の対応頂点ならびに stand top/base 座標が生成 geometry 上で完全一致し、STL 再読込後の最大境界差が `0.00001 mm` 以下である
-- **SC-005**: 上下穴、スタンド、穴回転、outward / inward、極・継ぎ目を含む少なくとも20パーツの検証セットで、成功した各 STL が一般的なスライサーに単一 watertight solid として修復なしで読み込まれる
+- **SC-004**: 少なくとも 2×2、3×2、4×3 の全パーツについて、隣接境界の対応頂点、全 global scalar、collar / stand-top / bottom 座標が生成 geometry 上で Float64 と Float32 の双方で完全一致し、STL 再読込後の最大境界差が `0.00001 mm` 以下である
+- **SC-005**: 上下穴、スタンド、穴回転、outward / inward、brightness-varying `O`、south/equator/north cut、`w=0` / relief 未満 / 同値 / 超過 / `2R`、minimum `W`、1-segment column、極・継ぎ目を含む少なくとも20パーツの検証セットで、成功した各 STL が一般的なスライサーに単一 watertight solid として修復なしで読み込まれる
 - **SC-006**: 各 Export について、STL の三角形数と座標集合が表示中 Built Part と一致し、選択外パーツの三角形混入が0件である
 - **SC-007**: 無効値の表（0、負数、小数、動的上限超過、Index 超過）を100%検出して Build をブロックし、3×2 / Index 5 の保存・再読み込みおよび旧保存データ移行が期待値どおりになる
 - **SC-008**: デフォルト 256×128 セグメントの選択パーツ生成は、4096×2048 入力を使う現行デスクトップブラウザ・一般的な消費者向けハードウェアで30秒以内に完了し、処理失敗時もページ再読み込みなしで再操作できる
@@ -243,7 +252,7 @@
 
 - 現行バリデーションを満たし、未分割時に正の体積を持つ watertight solid を生成できる画像・パラメータを通常入力とする。分割によって選択セルが空または非連結になる例外は FR-032 の回復可能エラーで扱う
 - exact public 1×1 の互換性基準は untouched legacy geometry であり、split tuple の基準は本仕様の conforming split-path volume complex である。legacy stand join の overlapping/nonconforming internal volume を split output の和集合として再現することは仮定しない
-- `globalTopMin` は要求列だけの局所最小値ではなく、凍結した Build image/params に対する全 `W` canonical U sample の最小値であり、各列 Build が同一の planar `bottomY` を独立再計算できるものとする
+- `tauMin`, `YcutMin`, `Yc`, `Ys`, `Yb` は要求列だけの局所値ではなく、凍結した Build image/params に対する全 `W` canonical sample を同じ順序で reduction した global Float64 scalar であり、各列 Build が同一値と同一 Float32 ring 座標を独立再計算できるものとする
 - 単位、モデル原点、座標軸、STL の向きは現行どおりとし、単位は millimeter とする
 - 「再組立て可能」はデジタル形状上の境界一致を意味する。実プリンターの寸法誤差・材料収縮・接着方法は保証対象外である
 - STL は geometry のみを保持し、Preview の grayscale texture、material、light、animation は含まない
@@ -258,10 +267,10 @@
 - [ ] **MVP-004**: Build が押下時スナップショットから選択パーツだけを生成・表示する
 - [ ] **MVP-005**: 未 Build の設定変更で Preview が変わらず、次の Build 開始時または新画像選択時に旧結果がクリアされ、成功時に置き換わる
 - [ ] **MVP-006**: Export STL が表示中 Built Part と同じ geometry だけを出力し、規定ファイル名を使う
-- [ ] **MVP-007**: 各パーツが正の体積を持つ単一の watertight solid で、開いた面・非多様体・縮退面がない
+- [ ] **MVP-007**: 各パーツが正の体積を持つ単一の watertight solid で、開いた面・非多様体・縮退面がなく、prescribed raw-positive determinant、per-cell volume equality、non-overlap を満たす
 - [ ] **MVP-008**: 新しい分割壁が実際の内外面を接続し、隣接パーツの共有境界座標が一致する
-- [ ] **MVP-009**: 全 Index の再配置で canonical split-path whole solid を再構成し、共有境界に人工的な隙間・オフセットがない
-- [ ] **MVP-010**: 上穴・下穴・スタンド・穴内腔を保持し、境界交差時も閉ソリッドになる
+- [ ] **MVP-009**: 全 Index の再配置で canonical split-path whole solid を再構成し、共有境界に人工的な隙間・オフセットがなく、collar / taper / tube の interior overlap がない
+- [ ] **MVP-010**: 上穴・下穴・approved collar / taper / tube stand・open lumen・`BI/BO` annular bottom を保持し、`w===0` では stand を生成せず exact shell rim を保ち、境界交差時も閉ソリッドになる
 - [ ] **MVP-011**: holeLatitude / holeLongitude によりローカル分割グリッド・穴・スタンド・分割壁が一体回転し、画像方向が固定される相互作用が FR-021 どおりである
 - [ ] **MVP-012**: outward / inward、brightness / contrast / minCos の厚み結果が未分割モデルの同じ領域と一致する
 - [ ] **MVP-013**: imageScale、flip、pad / stretch、texture の UV と向きが全パーツで一致する
