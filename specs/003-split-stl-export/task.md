@@ -196,7 +196,7 @@ Commit boundary: Phase 5 only. Prerequisites: reviewed Phase 4.
   - Definition of Done: U is selected by integer source segment only; collar/taper/tube rows use the two approved cone scalars; all three named interfaces retain canonical identity through clipping; no coordinate-tolerance matching, offset, kerf, clearance, or extra wall thickness is introduced.
   - Trace: FR-017..FR-020, FR-025; AC-003, AC-004; SC-004, SC-005; MVP-008..MVP-010, MVP-014.
 
-- [ ] **T5.2 — Extract grouped boundary mesh and reject invalid solids before publication**
+- [x] **T5.2 — Extract grouped boundary mesh and reject invalid solids before publication**
   - Prerequisites: T5.1.
   - Target files: `src/lithophane/meshTopology.ts`, `tests/unit/meshTopology.test.ts`.
   - Unit of work: cancel internal tetra faces by canonical IDs, emit deterministic outer/inner/wall groups, and validate Float32 closed-solid edge incidence, connectivity, volume, degenerates, and self-intersections.
