@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { calculateCameraFit, LEGACY_CAMERA_FRAME } from './cameraFit';
 
 export type RotationAxis = 'x' | 'y' | 'z';
 
@@ -29,11 +30,84 @@ export const defaultCenterLightSettings: CenterLightSettings = {
 
 export type SceneHandle = {
   setMesh(mesh: THREE.Mesh | null): void;
+  fitCameraToBounds(bounds: THREE.Box3): void;
+  resetLegacyCameraFrame(): void;
   setAnimationSettings(next: AnimationSettings): void;
   setCenterLightSettings(next: CenterLightSettings): void;
   resize(): void;
   dispose(): void;
 };
+
+export type SceneResourceLifecycle = {
+  start(): void;
+  dispose(): void;
+  snapshot(): Readonly<{ disposed: boolean; running: boolean; frameRequest: number | null }>;
+};
+
+type SceneResourceLifecycleDependencies = {
+  requestFrame(callback: FrameRequestCallback): number;
+  cancelFrame(id: number): void;
+  renderFrame(nowMs: number): void;
+  clearMesh(): void;
+  disposeControls(): void;
+  disposeRenderer(): void;
+};
+
+export function createSceneResourceLifecycle(
+  dependencies: SceneResourceLifecycleDependencies,
+): SceneResourceLifecycle {
+  let disposed = false;
+  let frameRequest: number | null = null;
+
+  const frame: FrameRequestCallback = (nowMs) => {
+    frameRequest = null;
+    if (disposed) return;
+    dependencies.renderFrame(nowMs);
+    if (!disposed) frameRequest = dependencies.requestFrame(frame);
+  };
+
+  return {
+    start() {
+      if (disposed || frameRequest !== null) return;
+      frameRequest = dependencies.requestFrame(frame);
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      const pendingFrame = frameRequest;
+      frameRequest = null;
+      let firstError: unknown = null;
+      const cleanup = [
+        () => { if (pendingFrame !== null) dependencies.cancelFrame(pendingFrame); },
+        dependencies.clearMesh,
+        dependencies.disposeControls,
+        dependencies.disposeRenderer,
+      ];
+      for (const release of cleanup) {
+        try { release(); } catch (error) { firstError ??= error; }
+      }
+      if (firstError) throw firstError;
+    },
+    snapshot: () => Object.freeze({
+      disposed,
+      running: !disposed && frameRequest !== null,
+      frameRequest,
+    }),
+  };
+}
+
+/** Bridges initialization failures to the already-allocated scene resource owner. */
+export function initializeSceneResourceLifecycle(
+  lifecycle: SceneResourceLifecycle,
+  initialize: () => void,
+): void {
+  try {
+    initialize();
+  } catch (error) {
+    try { lifecycle.dispose(); } catch { /* Preserve the initialization error. */ }
+    throw error;
+  }
+}
 
 export function createScene(canvas: HTMLCanvasElement): SceneHandle {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -79,6 +153,56 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
     if (currentMesh) scene.add(currentMesh);
   }
 
+  function drainControlsDamping() {
+    const dampingWasEnabled = controls.enableDamping;
+    // A non-damped update applies and clears pending orbit/pan deltas before reframing.
+    controls.enableDamping = false;
+    controls.update();
+    controls.enableDamping = dampingWasEnabled;
+  }
+
+  function fitCameraToBounds(bounds: THREE.Box3) {
+    drainControlsDamping();
+    const fit = calculateCameraFit(bounds, {
+      fovDeg: camera.fov,
+      aspect: camera.aspect,
+      position: camera.position,
+      target: controls.target,
+    });
+    controls.target.set(fit.target.x, fit.target.y, fit.target.z);
+    camera.position.set(fit.position.x, fit.position.y, fit.position.z);
+    camera.near = fit.near;
+    camera.far = fit.far;
+    camera.zoom = fit.zoom;
+    controls.minDistance = fit.minDistance;
+    controls.maxDistance = fit.maxDistance;
+    camera.lookAt(controls.target);
+    camera.updateProjectionMatrix();
+    controls.update();
+  }
+
+  function resetLegacyCameraFrame() {
+    drainControlsDamping();
+    camera.position.set(
+      LEGACY_CAMERA_FRAME.position.x,
+      LEGACY_CAMERA_FRAME.position.y,
+      LEGACY_CAMERA_FRAME.position.z,
+    );
+    controls.target.set(
+      LEGACY_CAMERA_FRAME.target.x,
+      LEGACY_CAMERA_FRAME.target.y,
+      LEGACY_CAMERA_FRAME.target.z,
+    );
+    camera.near = LEGACY_CAMERA_FRAME.near;
+    camera.far = LEGACY_CAMERA_FRAME.far;
+    camera.zoom = LEGACY_CAMERA_FRAME.zoom;
+    controls.minDistance = LEGACY_CAMERA_FRAME.minDistance;
+    controls.maxDistance = LEGACY_CAMERA_FRAME.maxDistance;
+    camera.lookAt(controls.target);
+    camera.updateProjectionMatrix();
+    controls.update();
+  }
+
   function setAnimationSettings(next: AnimationSettings) {
     const refreshRateHz = Math.min(240, Math.max(1, Math.round(next.refreshRateHz)));
     const axis: RotationAxis = next.rotationAxis === 'x' || next.rotationAxis === 'z' ? next.rotationAxis : 'y';
@@ -112,12 +236,9 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
     camera.updateProjectionMatrix();
   }
 
-  let raf = 0;
   let lastFrameMs = performance.now();
   let lastRenderMs = 0;
   function frame(nowMs: number) {
-    raf = requestAnimationFrame(frame);
-
     const deltaSec = Math.max(0, Math.min(0.1, (nowMs - lastFrameMs) / 1000));
     lastFrameMs = nowMs;
 
@@ -137,14 +258,26 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
     renderer.render(scene, camera);
   }
 
-  resize();
-  raf = requestAnimationFrame(frame);
+  const resourceLifecycle = createSceneResourceLifecycle({
+    requestFrame: (callback) => requestAnimationFrame(callback),
+    cancelFrame: (id) => cancelAnimationFrame(id),
+    renderFrame: frame,
+    clearMesh: () => setMesh(null),
+    disposeControls: () => controls.dispose(),
+    disposeRenderer: () => renderer.dispose(),
+  });
+  initializeSceneResourceLifecycle(resourceLifecycle, () => {
+    resize();
+    resourceLifecycle.start();
+  });
 
-  function dispose() {
-    cancelAnimationFrame(raf);
-    controls.dispose();
-    renderer.dispose();
-  }
-
-  return { setMesh, setAnimationSettings, setCenterLightSettings, resize, dispose };
+  return {
+    setMesh,
+    fitCameraToBounds,
+    resetLegacyCameraFrame,
+    setAnimationSettings,
+    setCenterLightSettings,
+    resize,
+    dispose: resourceLifecycle.dispose,
+  };
 }

@@ -14,10 +14,61 @@ export type DecodeOptions = {
   paddingMode?: 'pad' | 'stretch';
 };
 
-async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
-  const url = URL.createObjectURL(blob);
+export type ImageDecodeDependencies = {
+  createImageBitmap: ((blob: Blob) => Promise<ImageBitmap>) | null;
+  createImageElement(): HTMLImageElement;
+  createObjectURL(blob: Blob): string;
+  revokeObjectURL(url: string): void;
+  createCanvas(): HTMLCanvasElement;
+  createWorkingImage(source: ImageData, options: Required<DecodeOptions>): ImageData;
+};
+
+function defaultDecodeDependencies(): ImageDecodeDependencies {
+  return {
+    createImageBitmap: typeof globalThis.createImageBitmap === 'function'
+      ? (blob) => globalThis.createImageBitmap(blob)
+      : null,
+    createImageElement: () => new Image(),
+    createObjectURL: (blob) => URL.createObjectURL(blob),
+    revokeObjectURL: (url) => URL.revokeObjectURL(url),
+    createCanvas: () => document.createElement('canvas'),
+    createWorkingImage,
+  };
+}
+
+function releaseCanvas(canvas: HTMLCanvasElement): void {
+  try { canvas.width = 0; } catch { /* Preserve the decode/setup error. */ }
+  try { canvas.height = 0; } catch { /* Preserve the decode/setup error. */ }
+}
+
+function copyPixelsToImageData(
+  source: CanvasImageSource,
+  width: number,
+  height: number,
+  dependencies: ImageDecodeDependencies,
+): ImageData {
+  const canvas = dependencies.createCanvas();
   try {
-    const img = new Image();
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw { code: 'DECODE_FAILED', message: 'Canvas 2D context not available.' } satisfies AppError;
+    ctx.drawImage(source, 0, 0);
+    return ctx.getImageData(0, 0, width, height);
+  } finally {
+    releaseCanvas(canvas);
+  }
+}
+
+async function loadImageFromBlob(
+  blob: Blob,
+  dependencies: ImageDecodeDependencies,
+): Promise<HTMLImageElement> {
+  const url = dependencies.createObjectURL(blob);
+  let image: HTMLImageElement | null = null;
+  let failure: unknown = null;
+  try {
+    const img = dependencies.createImageElement();
     img.decoding = 'async';
 
     await new Promise<void>((resolve, reject) => {
@@ -25,14 +76,24 @@ async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
       img.onerror = () => reject(new Error('Failed to load image.'));
       img.src = url;
     });
-
-    return img;
-  } finally {
-    URL.revokeObjectURL(url);
+    image = img;
+  } catch (error) {
+    failure = error;
   }
+  try {
+    dependencies.revokeObjectURL(url);
+  } catch (cleanupError) {
+    failure ??= cleanupError;
+  }
+  if (failure) throw failure;
+  return image!;
 }
 
-export async function decodeImageToImageData(file: File, options: DecodeOptions = {}): Promise<DecodedImage> {
+export async function decodeImageToImageData(
+  file: File,
+  options: DecodeOptions = {},
+  dependencies: ImageDecodeDependencies = defaultDecodeDependencies(),
+): Promise<DecodedImage> {
   const mimeType = file.type;
   if (mimeType !== 'image/jpeg' && mimeType !== 'image/png') {
     const err: AppError = {
@@ -45,43 +106,35 @@ export async function decodeImageToImageData(file: File, options: DecodeOptions 
 
   let width = 0;
   let height = 0;
-  let imageData: ImageData;
+  let imageData: ImageData | null = null;
 
-  // Prefer createImageBitmap when available.
-  if ('createImageBitmap' in window) {
-    const bitmap = await createImageBitmap(file);
+  if (dependencies.createImageBitmap) {
+    const bitmap = await dependencies.createImageBitmap(file);
+    let failure: unknown = null;
     try {
       width = bitmap.width;
       height = bitmap.height;
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw { code: 'DECODE_FAILED', message: 'Canvas 2D context not available.' } satisfies AppError;
-
-      ctx.drawImage(bitmap, 0, 0);
-      imageData = ctx.getImageData(0, 0, width, height);
-    } finally {
-      bitmap.close();
+      imageData = copyPixelsToImageData(bitmap, width, height, dependencies);
+    } catch (error) {
+      failure = error;
     }
+    try {
+      bitmap.close();
+    } catch (cleanupError) {
+      failure ??= cleanupError;
+    }
+    if (failure) throw failure;
   } else {
-    const img = await loadImageFromBlob(file);
+    const img = await loadImageFromBlob(file, dependencies);
     width = img.naturalWidth;
     height = img.naturalHeight;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw { code: 'DECODE_FAILED', message: 'Canvas 2D context not available.' } satisfies AppError;
-
-    ctx.drawImage(img, 0, 0);
-    imageData = ctx.getImageData(0, 0, width, height);
+    imageData = copyPixelsToImageData(img, width, height, dependencies);
   }
 
-  // All images are converted into a 2:1 working image (white padding + optional imageScale).
-  const working = createWorkingImage(imageData, {
+  if (!imageData) {
+    throw { code: 'DECODE_FAILED', message: 'Image decode produced no pixels.' } satisfies AppError;
+  }
+  const working = dependencies.createWorkingImage(imageData, {
     imageScale: options.imageScale ?? 1,
     flipHorizontal: options.flipHorizontal ?? false,
     flipVertical: options.flipVertical ?? false,

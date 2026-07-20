@@ -4,12 +4,40 @@ import { Controls } from './components/Controls'
 import { Viewer } from './components/Viewer'
 import { createGenerationRunCoordinator, generateFromSnapshot, toGenerateErrorMessage } from './domain/generate'
 import { initialState, isExportReady, reducer } from './domain/state'
-import { createBuildSnapshot } from './domain/builtPart'
+import { createBuildSnapshot, type BuiltPart } from './domain/builtPart'
 import type { LithophaneParams, SplitField } from './domain/params'
 import { loadPreferences, savePreferences } from './domain/preferences'
 import { validateParams } from './domain/validation'
 import { exportBuiltPart } from './three/exporter'
 import type { AnimationSettings, CenterLightSettings } from './three/scene'
+
+export type BuiltPartGeometryOwner = {
+  replace(part: BuiltPart): void
+  clear(): void
+  snapshot(): Readonly<{ current: BuiltPart | null }>
+}
+
+/** App-only owner for published BuiltPart source geometry. */
+// eslint-disable-next-line react-refresh/only-export-components
+export function createBuiltPartGeometryOwner(): BuiltPartGeometryOwner {
+  let current: BuiltPart | null = null
+
+  function clear() {
+    const previous = current
+    current = null
+    previous?.geometry.dispose()
+  }
+
+  return {
+    replace(part) {
+      if (part === current) return
+      clear()
+      current = part
+    },
+    clear,
+    snapshot: () => Object.freeze({ current }),
+  }
+}
 
 function App() {
   const [state, dispatch] = useReducer(reducer, undefined, () => {
@@ -21,6 +49,7 @@ function App() {
     })
   })
   const [runCoordinator] = useState(() => createGenerationRunCoordinator())
+  const [builtPartOwner] = useState(() => createBuiltPartGeometryOwner())
   const [exportErrorMessage, setExportErrorMessage] = useState<string | null>(null)
   const [showTexture, setShowTexture] = useState(() => loadPreferences().showTexture)
   const [animationSettings, setAnimationSettings] = useState<AnimationSettings>(
@@ -39,17 +68,16 @@ function App() {
     })
   }, [animationSettings, centerLightSettings, showTexture, state.params])
 
-  useEffect(() => {
-    const geometry = state.builtPart?.geometry
-    return () => geometry?.dispose()
-  }, [state.builtPart])
-
-  useEffect(() => () => runCoordinator.invalidate(), [runCoordinator])
+  useEffect(() => () => {
+    runCoordinator.invalidate()
+    builtPartOwner.clear()
+  }, [builtPartOwner, runCoordinator])
 
   async function runGeneration(snapshot: ReturnType<typeof createBuildSnapshot>, runToken: number) {
     try {
       const builtPart = await generateFromSnapshot(snapshot)
       runCoordinator.publish(runToken, builtPart, (current) => {
+        builtPartOwner.replace(current)
         dispatch({ type: 'generation_success', builtPart: current })
       }, (stale) => {
         stale.geometry.dispose()
@@ -62,6 +90,7 @@ function App() {
 
   async function handleSelectFile(file: File) {
     runCoordinator.invalidate()
+    builtPartOwner.clear()
     setExportErrorMessage(null)
     dispatch({ type: 'select_file', file })
     // Do not auto-generate. User must press Build.
@@ -92,6 +121,7 @@ function App() {
     if (state.paramsError) return
     const snapshot = createBuildSnapshot(state.file, state.params)
     const runToken = runCoordinator.begin()
+    builtPartOwner.clear()
     dispatch({ type: 'start_generate' })
     void runGeneration(snapshot, runToken)
   }
@@ -163,12 +193,7 @@ function App() {
 
         <main className="viewer">
           <Viewer
-            geometry={state.builtPart?.geometry ?? null}
-            file={state.status === 'idle' ? null : state.file}
-            imageScale={state.params.imageScale}
-            flipHorizontal={state.params.flipHorizontal}
-            flipVertical={state.params.flipVertical}
-            paddingMode={state.params.paddingMode}
+            builtPart={state.builtPart}
             showTexture={showTexture}
             animationSettings={animationSettings}
             centerLightSettings={centerLightSettings}

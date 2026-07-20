@@ -249,7 +249,7 @@ Commit boundary: Phase 6 only. Prerequisites: reviewed Phase 5.
 
 Commit boundary: Phase 7 only. Prerequisites: reviewed Phase 6.
 
-- [ ] **T7.1 — Add pure split camera fitting and exact legacy frame reset**
+- [x] **T7.1 — Add pure split camera fitting and exact legacy frame reset**
   - Prerequisites: T6.1.
   - Target files: `src/three/cameraFit.ts`, `src/three/scene.ts`, `tests/unit/sceneFit.test.ts`.
   - Unit of work: calculate bounds fit with 1.2 margin and add scene fit/reset APIs without transforming source geometry.
@@ -261,7 +261,7 @@ Commit boundary: Phase 7 only. Prerequisites: reviewed Phase 6.
   - Definition of Done: fit operates on cloned mesh bounds only; resize/null/live edits never trigger fit; legacy reset is available solely for transition from split-fitted state.
   - Trace: FR-033; AC-008; MVP-018.
 
-- [ ] **T7.2 — Render immutable Built Part image/geometry with split-only camera behavior**
+- [x] **T7.2 — Render immutable Built Part image/geometry with split-only camera behavior**
   - Prerequisites: T7.1, T3.3.
   - Target files: `src/components/Viewer.tsx`, `src/App.tsx`, `tests/unit/viewer.test.ts`.
   - Unit of work: replace live File/transform Preview inputs with Built Part; clone geometry once; create a Viewer-owned grayscale texture from a distinct byte buffer; use legacy/split-fitted transition state.
@@ -274,7 +274,7 @@ Commit boundary: Phase 7 only. Prerequisites: reviewed Phase 6.
   - Definition of Done: Preview contains selected Built Part only; edits to H/V/Index/dimensions/holes/thickness/image transform cannot affect it; fresh/repeated 1×1 camera behavior stays untouched; controls, orbit/zoom/light/animation work; no source geometry mutation/disposal by Viewer.
   - Trace: FR-009, FR-010, FR-024, FR-026, FR-033; AC-002, AC-004, AC-005, AC-008; MVP-004, MVP-005, MVP-013, MVP-015, MVP-018.
 
-- [ ] **T7.3 — Centralize resource ownership and stale-result disposal**
+- [x] **T7.3 — Centralize resource ownership and stale-result disposal**
   - Prerequisites: T7.2, T3.2.
   - Target files: `src/App.tsx`, `src/components/Viewer.tsx`, `src/lithophane/imageDecode.ts`, `src/three/scene.ts`, `tests/unit/state.test.ts`, `tests/unit/viewer.test.ts`.
   - Unit of work: finalize one-owner cleanup paths for Built Part source geometry, Viewer clone/texture/canvas/materials, ImageBitmap, scene RAF/listeners/controls/renderer, and stale generated geometry.

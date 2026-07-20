@@ -9,6 +9,7 @@ import {
 import { DEFAULT_PARAMS, type LithophaneParams } from '../../src/domain/params';
 import { initialState, isExportReady, reducer, type AppState } from '../../src/domain/state';
 import { validateParams } from '../../src/domain/validation';
+import { createBuiltPartGeometryOwner } from '../../src/App';
 
 function file(name = 'source.png'): File {
   return new File(['pixels'], name, { type: 'image/png', lastModified: 123 });
@@ -309,5 +310,57 @@ export async function registerTests(t: TestContext): Promise<void> {
       assert.fail('current result must not use the stale callback');
     }), true);
     assert.equal(published, 1);
+  });
+
+  await t.test('App source owner disposes replacement, Build clear, source selection/reset clear, and unmount exactly once', () => {
+    const events: string[] = [];
+    const makeOwnedPart = (id: string) => {
+      const value = builtPart();
+      value.geometry.dispose = () => events.push(`dispose:${id}`);
+      return value;
+    };
+    const first = makeOwnedPart('first');
+    const second = makeOwnedPart('second');
+    const third = makeOwnedPart('third');
+    const owner = createBuiltPartGeometryOwner();
+
+    owner.replace(first);
+    owner.replace(first);
+    assert.deepEqual(events, []);
+    owner.replace(second);
+    assert.deepEqual(events, ['dispose:first'], 'publication replacement releases only the former source');
+    owner.clear(); // Build start / source selection / reset share this path.
+    owner.clear();
+    assert.deepEqual(events, ['dispose:first', 'dispose:second']);
+    owner.replace(third);
+    owner.clear(); // App unmount (including repeated/StrictMode-safe cleanup).
+    owner.clear();
+    assert.deepEqual(events, ['dispose:first', 'dispose:second', 'dispose:third']);
+    assert.equal(owner.snapshot().current, null);
+  });
+
+  await t.test('stale Built Parts dispose exactly once while current publication remains App-owned', () => {
+    const coordinator = createGenerationRunCoordinator();
+    const owner = createBuiltPartGeometryOwner();
+    const stale = builtPart();
+    const current = builtPart();
+    let staleDisposals = 0;
+    let currentDisposals = 0;
+    stale.geometry.dispose = () => { staleDisposals += 1; };
+    current.geometry.dispose = () => { currentDisposals += 1; };
+
+    const staleToken = coordinator.begin();
+    coordinator.invalidate();
+    assert.equal(coordinator.publish(staleToken, stale, owner.replace, (part) => part.geometry.dispose()), false);
+    assert.equal(staleDisposals, 1);
+    assert.equal(currentDisposals, 0);
+
+    const currentToken = coordinator.begin();
+    assert.equal(coordinator.publish(currentToken, current, owner.replace, (part) => part.geometry.dispose()), true);
+    assert.equal(staleDisposals, 1);
+    assert.equal(currentDisposals, 0, 'current source stays owned until an App transition');
+    owner.clear();
+    owner.clear();
+    assert.equal(currentDisposals, 1);
   });
 }
