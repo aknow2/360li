@@ -53,7 +53,7 @@
 
 1. **Given** 方向マーカー付き作業用画像と複数分割がある, **When** Index を 1 から総パーツ数まで順に Build する, **Then** Index は穴回転前のローカル分割 UV における行優先順で、南側の行から北側の行へ、各行では `splitU=0` 側から `splitU=1` 側へ進む
 2. **Given** セグメント数が分割数で割り切れない, **When** 各パーツを生成する, **Then** 余りセグメントは小さい行番号・列番号から1つずつ割り当てられ、セグメントの欠落・重複はない
-3. **Given** 同一設定で全 Index の STL がある, **When** 同じ座標系で配置する, **Then** 外面・内面・既存の穴・スタンドは未分割モデルと同じ位置になり、共有分割境界に人工的な隙間がない
+3. **Given** 同一設定で全 Index の STL がある, **When** 同じ座標系で配置する, **Then** sphere 外面・内面・既存の穴は legacy 1×1 と同じ位置になり、スタンドは規定の split-path conforming join と共通底面を再構成し、共有分割境界に人工的な隙間がない
 
 ---
 
@@ -105,6 +105,8 @@
 - **EC-014**: Build の途中失敗またはリソース不足では部分的・開いた geometry を Preview / Export へ公開せず、UI を再操作可能な状態へ戻す
 - **EC-015**: 旧形式、欠落フィールド、不正型、破損 JSON の保存設定では、欠落・解釈不能な分割値だけをデフォルトへ戻し、アプリを起動不能にしない
 - **EC-016**: 横または縦の一方だけが `1` の場合、その方向には新しい分割壁を追加せず、もう一方の方向に必要な境界だけを閉じる
+- **EC-017**: 下穴スタンド付き分割生成では、要求された列が1列だけでも全 `W` 個の canonical U cut-ring sample から同じ `globalTopMin` を再計算し、別々に Build した隣接列でスタンド上面・底面座標を一致させる
+- **EC-018**: inward などで canonical 点が一致して遷移断面 `I -> O -> OT -> IT` の一部が縮退する場合は、座標 tolerance による welding や面の重複で補修せず、canonical identity で数学的にゼロ体積の重複部分だけを除外する
 
 ## Requirements *(mandatory)*
 
@@ -130,6 +132,16 @@
 - 横セグメント数 `W=widthSegments` に対し `qW=floor(W/H)`、`rW=W mod H` とし、列 `c <= rW` には `qW+1`、それ以外には `qW` セグメントを割り当てる。縦も `T=heightSegments`、`qT=floor(T/V)`、`rT=T mod V` として同じ規則を行へ適用する
 - 各境界の `splitU` / `splitV` は割当て済みセグメント数の累積値を `W` または `T` で割った値とする。隣接パーツは同一の既存セグメント境界頂点列を別々の閉ソリッド境界として共有し、その後に同じ `R` を適用する
 
+### Split-path-only Bottom Stand Join
+
+- この節は split tuple が exact `H=1, V=1, Index=1` でない場合だけに適用する。exact public 1×1 は split allocation、canonical complex、全周 stand sampling をすべて bypass し、現行スタンド座標を含む legacy generator を byte-for-byte そのまま使用する
+- 下穴の cut ring の各 canonical U sample について、現行の sampled radius、brightness、bottom-hole ring-row 式から得る shell inner / outer 点をそれぞれ `I(u)` / `O(u)` とする。outer は球中心から遠い radial shell point として定義するため、南側の bottom cut latitude では常により小さい（より負の）Y を持つ点となり、厚み方向固有の shortcut には依存しない。この shell cut ring 自体は変更しない
+- stand inner-top `IT(u)` は legacy base-sphere ring と同じ X/Z（したがって lumen radius は同じ）かつ `Y=O(u).y` とする。stand outer-top `OT(u)` は同じ Y とし、同じ X/Z radial direction へ現行の `standWallThicknessMm` offset を加える
+- Build 時に凍結した同一 image/params を使い、要求列外も含む全 `W` 個の canonical U ring sample の `O(u).y` から `globalTopMin=min O(u).y` を求める。`standHeightMm=clamp(holeDiameterMm*0.25,3,12)` を維持し、全周共通の planar `bottomY=globalTopMin-standHeightMm` を使う。これにより tube cell の反転・ゼロ高さを防ぎ、別々に Build した列でも同じ底面を再現する
+- 各 U segment の conforming transition 断面は ordered polygon `I -> O -> OT -> IT` とし、canonical 点が一致する場合（例: inward の `O==IT`）は三角形として扱う。隣接断面間を決定的な conforming prism/tetrahedra に分割し、shell とは exact `I-O` radial cut face、tube とは exact `IT-OT` top-annulus face を共有して、各 internal face が opposite winding で相殺されるようにする
+- tube hexahedra は `IT/OT` から `bottomY` 上の legacy-radius inner/outer bottom ring へ接続する。lumen と annular bottom を維持し、disk/cap は追加しない。canonical identity により同一点となる数学的ゼロ体積部分だけを除外し、coordinate tolerance welding は行わない
+- この conforming join は、同一面側へ重なる legacy shell-to-stand transition / annular tube を split generation にコピーしないための内部補正である。sphere cut ring、lumen radius、stand wall thickness、derived stand height、hole rotation、画像/厚み式は維持するが、legacy の overlapping/nonconforming internal stand join の保存は要件ではない
+
 ### Functional Requirements
 
 - **FR-001**: システムは、Horizontal split count、Vertical split count、Split Index の3つの数値入力を Parameters 内に提供すること
@@ -146,18 +158,18 @@
 - **FR-012**: Export STL は再生成を行わず、その時点で Preview が参照している同一の生成済み geometry を唯一の入力として使用すること
 - **FR-013**: Built Part に記録された Build 時スナップショットを使い、1×1 / Index 1 の STL ファイル名は現行の `spherical-lithophane.stl` を維持し、分割時は `spherical-lithophane-h{H}-v{V}-part-{index}-of-{H*V}.stl` とすること
 - **FR-014**: 分割 STL は選択パーツの三角形だけを含み、他パーツ、球体全体、Preview 専用オブジェクト、テクスチャデータを含めないこと
-- **FR-015**: 分割処理は、現行設定で穴回転前に得られる球体シェル、上下穴、下穴スタンドを選択ローカル分割セルで切り出して閉じ、その選択ソリッド全体へ現行の穴回転を適用した結果として振る舞うこと。実装上の最適化は、この結果を変えてはならない
+- **FR-015**: 分割処理は、現行設定で穴回転前に得られる sampled sphere shell、上下穴、および本仕様の split-path-only conforming stand join を選択ローカル分割セルで切り出して閉じ、その選択ソリッド全体へ現行の穴回転を適用すること。sphere cut ring、sampled radii/brightness、hole ring-row、lumen radius、wall thickness、derived stand height、画像/厚み式を維持し、legacy の overlapping/nonconforming internal stand join は分割結果として要求しない
 - **FR-016**: 成功した各選択パーツは、正の体積を持つ単一の連結した閉ソリッドであり、開いたエッジ、非多様体エッジ、自己交差、遊離面、ゼロ面積三角形を含まないこと
 - **FR-017**: システムは、選択セルの切断位置で実際の外面と内面を接続する分割境界壁を生成し、すべての新しい切断輪郭を watertight に閉じること
 - **FR-018**: 隣接パーツの共有分割境界は、元のセグメント境界から導いた同一座標・同一分割を使い、別々に生成・STL 出力しても幾何学的に一致すること
-- **FR-019**: 分割境界に隙間、重なり代、オフセット、鋸しろ、勘合クリアランス、追加壁厚を加えず、同じ穴回転を適用した全パーツの外面・内面の和集合を未分割モデルと一致させること
-- **FR-020**: 上穴、下穴、standWallThicknessMm を反映したスタンドがローカルセル境界を横切る場合、各パーツには交差部分だけを含め、意図した開口部・スタンド内腔を分割壁で塞がないこと
+- **FR-019**: 分割境界に隙間、重なり代、オフセット、鋸しろ、勘合クリアランス、追加壁厚を加えず、同じ穴回転を適用した全パーツの和集合を同一入力の canonical split-path whole solid と一致させること。sphere shell と穴の外面・内面は legacy 1×1 と一致させるが、stand join の内部は本仕様の conforming correction を正とする
+- **FR-020**: 上穴、下穴、standWallThicknessMm を反映したスタンドがローカルセル境界を横切る場合、各パーツには conforming transition `I -> O -> OT -> IT` と tube の交差部分だけを含めること。全 `W` sample 由来の共通 `globalTopMin`、stand top rings、planar `bottomY` を別 Build でも同じ Float64 値から Float32 化し、意図した開口部・スタンド内腔を分割壁または disk/cap で塞がないこと
 - **FR-021**: holeLatitude / holeLongitude は現行どおり `R=Ry(spin)*Rx(tilt)` により、上下穴、スタンドに加えて選択シェルと分割壁も一体で回転すること。ローカル分割セルに対する穴・スタンドの所属 Index は変えず、画像・凹凸の最終モデル上の向きは現行どおり固定すること
 - **FR-022**: outward / inward の両厚み方向で、未分割モデルと同じ内外半径・明暗厚み分布を使い、分割壁はその地点の内外面を直接接続すること
 - **FR-023**: imageScale、flipHorizontal、flipVertical、paddingMode、brightnessCurve、contrast、minCos は未分割時と同じ順序・意味で作業用画像と厚みに適用し、その後も全パーツで最終方向由来の共通画像 UV を共有すること
 - **FR-024**: Show grayscale texture が有効な場合、選択パーツの既存外面だけへ Build 時スナップショットと同じ作業用画像・UV のテクスチャを表示し、内面・穴壁・スタンド壁・新しい分割壁にはテクスチャを引き伸ばさないこと。Show grayscale texture 自体の表示切替は再 Build なしで行えるが、未 Build の imageScale、flip、paddingMode 変更を表示中 Built Part のテクスチャへ先行適用しないこと
 - **FR-025**: Width / Height segments は未分割モデルの解像度であると同時に分割可能数の動的上限とし、分割のためにセグメント設定を暗黙変更しないこと
-- **FR-026**: Horizontal = 1、Vertical = 1、Index = 1 の場合は分割境界壁を一切追加せず、同一入力・既存パラメータに対する position / uv / index / material group、頂点数、三角形数、Preview、binary STL バイト列を機能追加前と同一にすること
+- **FR-026**: Horizontal = 1、Vertical = 1、Index = 1 の場合は split work をすべて bypass して untouched legacy path を呼び、分割境界壁を一切追加せず、現行 stand coordinates を含む同一入力・既存パラメータに対する position / uv / index / material group、頂点数、三角形数、Preview、binary STL バイト列を機能追加前と同一にすること
 - **FR-027**: 無効な分割入力では該当フィールド付近に範囲と整数条件を含むエラーを表示し、値を丸める・切り捨てる・自動 clamp することなく Build を無効化すること
 - **FR-028**: 直前の成功結果が Preview に残っている場合、未 Build の入力変更または入力エラーがあっても Export はその表示中 geometry に限って許可し、現在の入力値からファイル名や形状を推測しないこと
 - **FR-029**: システムは、3つの分割パラメータを他のユーザー設定と同じローカル設定へ保存し、有効値をページ再読み込み後に復元すること
@@ -172,8 +184,8 @@
 
 - **AC-001 (FR-001..FR-007)**: holeLatitude = 0、holeLongitude = 0 で方向マーカー付き画像を 3×2 に分割すると、Index 1..6 が定義どおりのローカル分割 UV 領域へ一意に対応し、10×5 セグメントでは横 4/3/3、縦 3/2 になる
 - **AC-002 (FR-008..FR-014, FR-028, FR-035)**: Build 後に入力値を変更しても Preview は変わらず、Export した STL の三角形集合と表示中 geometry が一致し、未 Build 値のパーツは含まれない。次の Build 開始時または新しい画像選択時には旧 Preview / Export がクリアされる
-- **AC-003 (FR-015..FR-020, FR-032)**: 代表的な全 Index を mesh 検証と一般的なスライサーで検査し、各成功結果が単一 watertight solid と認識され、共有境界座標が一致する
-- **AC-004 (FR-021..FR-025)**: 上下穴、スタンド、非ゼロ穴回転、outward / inward、flip、pad / stretch、テクスチャ有無の組合せでも、ローカル分割境界が穴・スタンドと一体回転し、選択パーツの位置・厚み・開口・テクスチャが未分割モデルの同じ最終領域と一致する
+- **AC-003 (FR-015..FR-020, FR-032)**: 代表的な全 Index を mesh 検証と一般的なスライサーで検査し、各成功結果が単一 watertight solid と認識され、shell/transition の `I-O` face と transition/tube の `IT-OT` face が opposite winding で相殺され、別 Build の共有境界・stand top/base 座標が一致する
+- **AC-004 (FR-021..FR-025)**: 上下穴、スタンド、非ゼロ穴回転、outward / inward、flip、pad / stretch、テクスチャ有無の組合せでも、ローカル分割境界が穴・スタンドと一体回転し、選択パーツの sphere cut ring・厚み・開口・テクスチャが legacy 1×1 の同じ最終領域と一致し、スタンドは split-path conforming join と共通 planar base の規則に一致する
 - **AC-005 (FR-026)**: 1×1 / Index 1 の回帰 fixture で、geometry 属性、index、group、集計値、Preview、および binary STL の比較が完全一致する
 - **AC-006 (FR-027, FR-030)**: 小数、0、セグメント数超過、Index 超過、旧保存値を使った検証で、暗黙補正なしに対象フィールドのエラーと Build 無効状態を確認できる
 - **AC-007 (FR-029..FR-031)**: 3×2 / Index 5 を保存して再読み込みすると設定だけが復元され、画像未選択・Preview 空・Export 無効から開始する
@@ -221,7 +233,7 @@
 - **SC-001**: 新規利用・旧保存データの双方で初期値が 1×1 / Index 1 となり、代表 fixture すべてで機能追加前と geometry 属性・index・group・頂点数・三角形数・binary STL が完全一致する
 - **SC-002**: holeLatitude = 0、holeLongitude = 0 の方向マーカー付き作業用画像の 2×2 および 3×2 分割で、全 Index が規定の行優先ローカル分割 UV 領域へ100%正しく対応する
 - **SC-003**: `10×5 segments / 3×2 splits`、`11×7 / 4×3` を含む少なくとも5件の非可除組合せで、全セグメントがちょうど1セルへ割り当てられ、欠落・外面重複が0件である
-- **SC-004**: 少なくとも 2×2、3×2、4×3 の全パーツについて、隣接境界の対応頂点座標が生成 geometry 上で完全一致し、STL 再読込後の最大境界差が `0.00001 mm` 以下である
+- **SC-004**: 少なくとも 2×2、3×2、4×3 の全パーツについて、隣接境界の対応頂点ならびに stand top/base 座標が生成 geometry 上で完全一致し、STL 再読込後の最大境界差が `0.00001 mm` 以下である
 - **SC-005**: 上下穴、スタンド、穴回転、outward / inward、極・継ぎ目を含む少なくとも20パーツの検証セットで、成功した各 STL が一般的なスライサーに単一 watertight solid として修復なしで読み込まれる
 - **SC-006**: 各 Export について、STL の三角形数と座標集合が表示中 Built Part と一致し、選択外パーツの三角形混入が0件である
 - **SC-007**: 無効値の表（0、負数、小数、動的上限超過、Index 超過）を100%検出して Build をブロックし、3×2 / Index 5 の保存・再読み込みおよび旧保存データ移行が期待値どおりになる
@@ -230,6 +242,8 @@
 ## Assumptions
 
 - 現行バリデーションを満たし、未分割時に正の体積を持つ watertight solid を生成できる画像・パラメータを通常入力とする。分割によって選択セルが空または非連結になる例外は FR-032 の回復可能エラーで扱う
+- exact public 1×1 の互換性基準は untouched legacy geometry であり、split tuple の基準は本仕様の conforming split-path volume complex である。legacy stand join の overlapping/nonconforming internal volume を split output の和集合として再現することは仮定しない
+- `globalTopMin` は要求列だけの局所最小値ではなく、凍結した Build image/params に対する全 `W` canonical U sample の最小値であり、各列 Build が同一の planar `bottomY` を独立再計算できるものとする
 - 単位、モデル原点、座標軸、STL の向きは現行どおりとし、単位は millimeter とする
 - 「再組立て可能」はデジタル形状上の境界一致を意味する。実プリンターの寸法誤差・材料収縮・接着方法は保証対象外である
 - STL は geometry のみを保持し、Preview の grayscale texture、material、light、animation は含まない
@@ -246,7 +260,7 @@
 - [ ] **MVP-006**: Export STL が表示中 Built Part と同じ geometry だけを出力し、規定ファイル名を使う
 - [ ] **MVP-007**: 各パーツが正の体積を持つ単一の watertight solid で、開いた面・非多様体・縮退面がない
 - [ ] **MVP-008**: 新しい分割壁が実際の内外面を接続し、隣接パーツの共有境界座標が一致する
-- [ ] **MVP-009**: 全 Index の再配置で未分割モデルとの人工的な隙間・オフセットがない
+- [ ] **MVP-009**: 全 Index の再配置で canonical split-path whole solid を再構成し、共有境界に人工的な隙間・オフセットがない
 - [ ] **MVP-010**: 上穴・下穴・スタンド・穴内腔を保持し、境界交差時も閉ソリッドになる
 - [ ] **MVP-011**: holeLatitude / holeLongitude によりローカル分割グリッド・穴・スタンド・分割壁が一体回転し、画像方向が固定される相互作用が FR-021 どおりである
 - [ ] **MVP-012**: outward / inward、brightness / contrast / minCos の厚み結果が未分割モデルの同じ領域と一致する

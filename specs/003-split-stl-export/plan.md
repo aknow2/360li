@@ -7,7 +7,7 @@
 
 Add three persisted split controls and make Build produce one immutable **Built Part** that owns the generated geometry, Build-time parameter/image snapshot, working texture image, summary, and export filename. Preview and STL export consume only that record, so editing any parameter after Build—including image scale, flips, and padding—cannot mutate the displayed texture, exported triangles, or filename.
 
-The split path is a deterministic volumetric cell-complex implementation. It constructs conforming tetrahedral cells for the shell, holes, and stand in pre-rotation local space; selects the requested longitude segments; partitions stand/transition cells at the requested latitude boundaries; extracts and validates one outward-wound boundary mesh; and only then applies the existing hole rotation. The existing `1×1 / Index 1` generator is an explicit untouched fast path and is locked by geometry and binary-STL fixtures.
+The split path is a deterministic volumetric cell-complex implementation. It constructs conforming tetrahedral cells for the shell, holes, and a split-path-only corrected stand join in pre-rotation local space; selects the requested longitude segments; partitions stand/transition cells at the requested latitude boundaries; extracts and validates one outward-wound boundary mesh; and only then applies the existing hole rotation. The existing `1×1 / Index 1` generator is an explicit untouched fast path, bypasses all split work, retains the current legacy stand coordinates, and is locked by geometry and binary-STL fixtures.
 
 ## Technical Context and Baseline
 
@@ -268,7 +268,7 @@ No edit-side value is read after snapshot capture. No Preview texture effect dep
 
 ### 1. Legacy compatibility gate
 
-`generateSphereLithophane` first checks the copied tuple. For exactly `H===1 && V===1 && splitIndex===1`, it calls the existing full-model implementation before allocating any split data. That implementation’s vertex emission order, `Float32Array` values, index constructor, index order, groups, normal computation, and rotation order stay unchanged. `exportGeometryToStlBlob` also keeps its current binary serialization path. The two checked-in STL fixtures and the geometry manifest (attribute byte hashes, index bytes/type, groups, counts) are captured from the pre-feature baseline and must compare byte-for-byte. No topology welding, sorting, validation rewrite, geometry transform, or split auto-fit is allowed on this path. The Viewer performs only the transition-specific legacy camera reset defined below when the preceding displayed part was split; a fresh or repeated legacy 1×1 path performs no camera reset or fit.
+`generateSphereLithophane` first checks the copied tuple. For exactly `H===1 && V===1 && splitIndex===1`, it calls the existing full-model implementation before allocation, canonical sampling, `globalTopMin`, clipping, or any other split work. That implementation’s current stand coordinates, vertex emission order, `Float32Array` values, index constructor, index order, groups, normal computation, and rotation order stay unchanged. `exportGeometryToStlBlob` also keeps its current binary serialization path. The two checked-in STL fixtures and the geometry manifest (attribute byte hashes, index bytes/type, groups, counts) are captured from the pre-feature baseline and must compare byte-for-byte. No topology welding, sorting, validation rewrite, geometry transform, or split auto-fit is allowed on this path. The Viewer performs only the transition-specific legacy camera reset defined below when the preceding displayed part was split; a fresh or repeated legacy 1×1 path performs no camera reset or fit.
 
 ### 2. Canonical local volumetric cell complex
 
@@ -276,11 +276,16 @@ The split path does not clip an already flattened surface mesh. `partSolid.ts` r
 
 - Each retained `(uSegment, vSegment)` sphere quad becomes two prisms between its actual sampled inner and outer triangles. Each prism is divided by a fixed global diagonal into three positively oriented tetrahedra. The north/south pole bands use one welded pole per radius and explicit wedge tetrahedra; duplicated SphereGeometry pole/seam indices are not treated as different coordinates.
 - A hole removes complete latitude cells using the existing `makeBottomHoleCut`/`makeTopHoleCut` ring-row rules. The exposed radial end of the shell is already a boundary face of the last retained shell volume; no disk is added, so the opening remains open.
-- When the bottom stand is enabled, every U segment gains conforming transition cells from the sampled shell inner/outer ring to `outerTop`, plus annular tube hexahedra from top to bottom. Each hexahedron is split using the same parity-independent six-tetra pattern. The shared top faces are identical vertex IDs and cancel; the surviving faces reproduce transition, rim, outer wall, inner wall, and bottom annulus with the hole lumen open.
+- At the bottom cut ring, let `I(u)` and `O(u)` be the sampled shell inner and outer points from the unchanged radii, brightness, and bottom-hole ring-row formulas. `O` is defined as the farther radial point, so at the southern cut latitude it is always the lower/more-negative-Y point in both thickness modes. Do not infer it from a mode-specific base-radius shortcut.
+- When the bottom stand is enabled, define a distinct stand inner-top `IT(u)` at the legacy base-sphere ring X/Z and `Y=O(u).y`; this preserves the lumen radius. Define `OT(u)` at the same Y with the existing `standWallThicknessMm` radial X/Z offset. Using the frozen Build image/params, sample all `W` canonical U positions—even for a one-column request—and set `globalTopMin=min_u O(u).y`. Keep `standHeightMm=clamp(holeDiameterMm*0.25,3,12)` and use one planar `bottomY=globalTopMin-standHeightMm` for every column Build.
+- For each U segment, the transition uses the ordered cross-section `I -> O -> OT -> IT` at both ends and a deterministic conforming prism/tetra subdivision. If canonical points coincide, such as inward `O==IT`, the cross-section becomes a triangle; only canonical-identity duplicate, mathematically zero-volume portions are skipped. The transition shares the exact `I-O` radial shell cut faces with shell tetrahedra and the exact `IT-OT` top-annulus faces with tube tetrahedra, and both interface sets must cancel with opposite winding.
+- Annular tube hexahedra connect `IT/OT` to inner/outer bottom rings at `bottomY` using the legacy X/Z lumen radius and wall offset. Each hexahedron is split deterministically. The surviving faces reproduce transition, outer wall, inner wall, and bottom annulus with the lumen open; no disk/cap is introduced.
 - Original complex faces carry provenance `outer`, `inner`, or `wall`. Only sampled outer-shell faces carry image UVs and material `0`; inner faces use material `1`; hole rims, stand, and future split faces use material `2` with neutral UV `(0,0)`.
 - Canonical vertex IDs are `(surface/ring kind, u grid index modulo W, v grid index, radial layer)`. The `u=0` and `u=W` seam is welded by ID. All computations use Float64 until final BufferAttributes.
 
-This construction makes holes and stand part of one conforming volume, rather than independent meshes whose surfaces can overlap.
+This construction makes holes and stand part of one conforming volume, rather than copying the legacy overlapping/nonconforming internal stand join. The split correction intentionally changes only that previously nonexistent split-generation join: it preserves the sphere cut ring, lumen radius, wall thickness, derived stand height, local hole rotation, and image/thickness formulas, while the exact public 1×1 remains entirely legacy.
+
+Replan record: the Phase 4 diagnostic independently proved that, in outward mode, the sampled `O` ring lies below the legacy base-sphere top plane. The legacy triangular transition volume and annular tube therefore occupy the same side of their claimed shared face; their positive tetrahedra have identical directed winding (24 transition/tube and 24 shell/transition conflicts in the 12×8 case), while reversing winding makes negative volume. Phase 4 remains incomplete. The distinct `IT/OT` construction above replaces that impossible split-path interface without changing the public legacy route.
 
 ### 3. Face ownership and selected-cell partition
 
@@ -311,13 +316,13 @@ Boundary extraction emits the four oriented faces of every positive-volume tetra
 - count `1`: selected-solid boundary, retain its inherited provenance/winding;
 - count `>2`, or count `2` with equal winding/provenance conflict: generation failure.
 
-Because adjacent source tetrahedra share edge IDs and use the same lexicographic polygon diagonal, their subdivided interface triangles cancel exactly. A cut face survives as material group `2`. Retained triangles are output deterministically in group order `outer`, `inner`, `wall`, then source cell key, boundary ID, and canonical vertex IDs. Vertices are compacted in first-use order. This gives stable results without coordinate-tolerance face matching.
+Because adjacent source tetrahedra share edge IDs and use the same lexicographic polygon diagonal, their subdivided interface triangles cancel exactly. This includes the shell/transition `I-O` radial faces and transition/tube `IT-OT` top-annulus faces; Phase 5 must treat a same-directed pair at either interface as a provenance failure, never as a face to retain or flip. A cut face survives as material group `2`. Retained triangles are output deterministically in group order `outer`, `inner`, `wall`, then source cell key, boundary ID, and canonical vertex IDs. Vertices are compacted in first-use order. This gives stable results without coordinate-tolerance face matching.
 
 ### 5. Winding, UVs, degenerates, rotation, and solid validation
 
 - Original outer faces point away from material volume; inner faces point into the lumen; hole/stand/split walls point away from material volume. The positive-tetra convention determines this mechanically rather than by per-feature guesses.
 - Attributes on an original exterior face interpolate its existing final-direction image UV. A cut vertex interpolates endpoint UV with the same `t`; only material `0` is textured, so split/stand/rim UVs cannot stretch the image.
-- Let `L=max(1,maxAbsCoordinate)` in millimeters. Remove a tetra when `abs(signedVolume6) <= (L*1e-10)^3`; remove a triangle when `length(cross(b-a,c-a)) <= (L*1e-10)^2`. Removal that leaves an unmatched edge is a failure, not a repair.
+- During canonical stand construction, skip only duplicate portions whose vertex identities prove mathematically zero volume; do not use coordinate tolerance to weld or reinterpret the `I/O/OT/IT` join. Later clipping/output validation may reject numerically degenerate tetrahedra or triangles using the scale-aware gate below, but may not use that gate to repair interface identity. Let `L=max(1,maxAbsCoordinate)` in millimeters: reject/remove a clipped tetra when `abs(signedVolume6) <= (L*1e-10)^3` and a triangle when `length(cross(b-a,c-a)) <= (L*1e-10)^2`; removal that leaves an unmatched edge is a failure.
 - After the local selected solid is fully closed, apply exactly `R=Ry((holeLongitude/100)*2*pi) * Rx((holeLatitude/100)*pi)` to every position. Relief and UV sampling use `dFinal=R*dLocal` before the transform, preserving current final image orientation. Outward uses `innerR=radius`, `outerR=radius+thickness`; inward uses `innerR=radius-thickness`, `outerR=radius`.
 - Convert positions/UVs to Float32 and indices to Uint16/Uint32 by final vertex count; compute normals once and create the existing three material groups.
 
@@ -388,7 +393,7 @@ Eleven test modules and their mandatory red-first scope:
 5. `builtPart.test.ts`: deep copied params/source metadata, transform edit isolation, both exact filename forms.
 6. `tetraClip.test.ts`: shared edge intersection IDs/coordinates, half-open volume ownership, face triangulation, cone boundary contact, degenerate rejection.
 7. `meshTopology.test.ts`: closed tetra/annulus acceptance and open, duplicate, same-winding, non-manifold, disconnected, zero-volume, self-intersecting rejection.
-8. `spherePartGeometry.test.ts`: all parts for 2×2, 3×2, 4×3; outward/inward; top/bottom holes; stand; rotated holes; seam/poles; one-segment cells; shared boundary equality; stand partition; empty/non-connected failure; texture UV orientation.
+8. `spherePartGeometry.test.ts`: all parts for 2×2, 3×2, 4×3; outward/inward; top/bottom holes; conforming `I/O/OT/IT` stand join; all-W `globalTopMin` and cross-Build Float64→Float32 top/base equality; exact opposite-winding shell/transition and transition/tube cancellation; open lumen/annular bottom; rotated holes; seam/poles; one-segment cells; shared boundary equality; stand partition; empty/non-connected failure; texture UV orientation.
 9. `sceneFit.test.ts`: centered/full and off-center/small bounds, aspect/FOV distance, near/far, stable target and finite fallback; exact legacy reset position/target/near/far/zoom/control limits.
 10. `viewer.test.ts`: fresh and repeated 1×1 use only legacy `setMesh`/resize with no fit/reset; split parts fit; split -> null -> 1×1 resets once to the exact legacy frame. It snapshots both SHA-256 and exact bytes of `builtPart.workingImage.data` before texture creation and asserts both remain identical after grayscale creation, detach/attach toggles, replacement, and unmount/dispose; it also proves the grayscale buffer/ArrayBuffer is distinct, only the copy becomes grayscale, texture disposal occurs exactly once, the canvas backing store is zeroed, and handle references are released.
 11. `exportParity.test.ts`: Preview source triangle set equals binary STL triangle set/order/winding; no foreign part triangles; Build-snapshot filename; both legacy STL files byte-for-byte.
@@ -449,23 +454,23 @@ Stop/replan: reducer needs side effects, snapshot retains mutable params, or cur
 
 Files: `partSolid.ts`, minimal routing in `sphereLithophane.ts`, geometry tests.
 
-Completion: unsplit split-path diagnostic complex (not the public 1×1 route) has conforming shell/hole/stand tetrahedra, positive volumes, cancellable internal faces, open lumens, and provenance groups; public legacy fixtures remain byte-identical.
+Completion: unsplit split-path diagnostic complex (not the public 1×1 route) uses distinct `IT/OT` rings, the ordered `I -> O -> OT -> IT` transition, all-W `globalTopMin`, and one planar bottom; shell/transition `I-O` and transition/tube `IT-OT` faces cancel with opposite winding; tetrahedra are positive, lumens stay open with an annular bottom, and public legacy fixtures remain byte-identical.
 
-Stop/replan: shell/stand interfaces cannot be made conforming without changing legacy output, or pole cells require tolerance-based welding.
+Stop/replan: the distinct split-path `IT/OT` interfaces still cannot be made conforming while the public 1×1 continues to bypass all split work, adjacent column Builds do not reproduce identical Float64 then Float32 stand coordinates, or pole/canonical stand cells require tolerance-based welding. The previously observed legacy-overlap contradiction is the reason for this replan and does not complete Phase 4.
 
 ### Phase 5 — Cell partition, extraction, and runtime topology gate
 
 Files: `tetraClip.ts`, `meshTopology.ts`, clipping/topology tests.
 
-Completion: deterministic U ownership and V cone partition; matching shared boundaries; correct winding/groups/UVs; all invalid topology fixtures rejected before publication.
+Completion: deterministic U ownership and V cone partition; matching shared boundaries; exact cancellation of `I-O` and `IT-OT` owned interfaces; correct winding/groups/UVs; all invalid topology fixtures rejected before publication.
 
-Stop/replan: adjacent independently generated parts differ after Float32 conversion, clipped faces do not cancel by provenance, self-intersection validation exceeds the performance budget, or any successful result has more than one component.
+Stop/replan: adjacent independently generated parts—including stand top/base rings derived from all-W `globalTopMin`—differ after Float32 conversion, clipped faces or either named stand interface do not cancel by provenance/opposite winding, self-intersection validation exceeds the performance budget, or any successful result has more than one component.
 
 ### Phase 6 — Full generator integration and geometry matrix
 
 Files: `sphereLithophane.ts`, `generate.ts`, `imageDecode.ts`, geometry/export integration tests and fixtures.
 
-Completion: all representative 2×2/3×2/4×3 parts, 20-part hole/stand/rotation/direction matrix, non-divisible grids, seam/poles, texture UV, STL parity, recoverable empty-cell errors, and 1×1 fixtures pass.
+Completion: all representative 2×2/3×2/4×3 parts, 20-part hole/stand/rotation/direction matrix, non-divisible grids, seam/poles, texture UV, conforming stand/top/base cross-Build equality, STL parity, recoverable empty-cell errors, and 1×1 fixtures pass.
 
 Stop/replan: a requested cell produces a mathematically valid but disconnected solid, the all-part union has a surface gap/overlap, a non-adjacent self-intersection appears, or legacy bytes change.
 
@@ -488,10 +493,10 @@ Stop/replan: any approved E2E fails, console/network contract is violated, slice
 ## Error Handling, Performance, Compatibility, and Constraints
 
 - Geometry work is synchronous after decode in the first implementation to preserve one atomic run; Build is disabled and status is visible. A worker is not introduced in MVP because it would add serialization/cancellation architecture not required by the spec. If the 30-second/UI responsiveness gate fails, stop and plan a worker as a separate reviewed change.
-- Peak risk is Float64 tetra/polyhedron expansion plus Float32 output. Generate only source U sectors and V bands that can intersect the selected cell; stream completed original tetrahedra into a face map instead of retaining all parts/all Indexes; release temporary maps before publishing. Never generate every part or clone the full model for clipping.
+- Peak risk is Float64 tetra/polyhedron expansion plus Float32 output. Generate volume only for source U sectors and V bands that can intersect the selected cell; the required all-W pass computes only canonical cut-ring `O(u).y` values needed for `globalTopMin` and does not construct all columns or parts. Stream completed original tetrahedra into a face map instead of retaining all parts/all Indexes, and release the all-W scalar/ring temporaries plus face maps before publication. Never generate every part or clone the full model for clipping.
 - The AABB self-intersection pass is `O(n log n + k)` expected; abort with a recoverable resource message on allocation failure. No partial BufferGeometry enters state.
 - Split boundaries have zero offset/kerf/tolerance/additional thickness. Shared coordinates are formula/provenance-identical before STL Float32 conversion; the test tolerance after reparse is `0.00001 mm`.
-- Existing units, origin, axes, relief sampling order, holes, stand dimensions, animation/light settings, three material groups, and STL orientation remain compatible. The explicit legacy branch is the backward-compatibility authority.
+- Existing units, origin, axes, relief sampling order, sphere cut ring, hole ring rows, lumen radius, stand wall thickness, derived stand height, animation/light settings, three material groups, and STL orientation remain compatible. Split generation intentionally uses the corrected conforming stand join and shared `bottomY`; only the explicit untouched legacy branch is the authority for exact legacy stand coordinates and byte compatibility.
 - Width/height segments remain unchanged and are the dynamic split maxima. No automatic split correction, batching, joinery, labels, multiple-part Preview, server, network call, or new export format is added.
 - Validation and generation errors are recoverable in place. A failed replacement Build intentionally leaves Preview/Export empty, as required after Build start; the user may correct inputs and Build again without reload.
 
@@ -512,6 +517,6 @@ Coverage check: every FR from FR-001 through FR-035, every AC from AC-001 throug
 
 ## Approval Gate and Open Questions
 
-Implementation **must not start** until both `specs/003-split-stl-export/task.md` and `specs/003-split-stl-export/e2e-test.md` have been created and approved after this plan. This plan round creates neither file and changes no source.
+`specs/003-split-stl-export/task.md` and `specs/003-split-stl-export/e2e-test.md` already exist. Phase 4 remains paused and unchecked after the diagnostic contradiction; implementation may resume only after this replan's spec/plan/task corrections are reviewed and approved. The approved E2E definitions require no wording change because they assert user-visible watertight/slicer behavior rather than the impossible internal legacy join.
 
 Open questions: **none**. The authoritative spec and the decisions above resolve parameter semantics, split ownership, stand/top-hole row assignment, topology failure behavior, snapshot identity, persistence, filename, test architecture, and acceptance gates.
