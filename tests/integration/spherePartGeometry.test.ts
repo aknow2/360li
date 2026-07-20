@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { DEFAULT_PARAMS, type LithophaneParams } from '../../src/domain/params';
 import { generateSphereLithophane } from '../../src/lithophane/sphereLithophane';
 import {
+  assertCellVolumeAgreement,
   buildPartSolidComplex,
   directedTetraFaces,
   type CanonicalVolumeComplex,
@@ -58,6 +59,29 @@ function flatImage(value = 127, width = 8, height = 4): ImageData {
     data[offset + 1] = value;
     data[offset + 2] = value;
     data[offset + 3] = 255;
+  }
+  return { width, height, data } as ImageData;
+}
+
+function directionalImage(): ImageData {
+  const width = 512;
+  const height = 256;
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const quadrant = (y < height / 2 ? 0 : 2) + (x < width / 2 ? 0 : 1);
+      const base = [24, 88, 160, 232][quadrant];
+      const cross = Math.abs(x - width / 2) < 3 || Math.abs(y - height / 2) < 3;
+      const seam = x < 12;
+      const marker = ((x - (40 + (quadrant % 2) * 256)) ** 2
+        + (y - (36 + Math.floor(quadrant / 2) * 128)) ** 2) < 16 ** 2;
+      const value = marker ? 255 - base : cross ? 248 : seam ? 8 : base;
+      const offset = (y * width + x) * 4;
+      data[offset] = value;
+      data[offset + 1] = value;
+      data[offset + 2] = value;
+      data[offset + 3] = 255;
+    }
   }
   return { width, height, data } as ImageData;
 }
@@ -583,6 +607,27 @@ export async function registerTests(t: TestContext): Promise<void> {
         }
       }
     }
+  });
+
+  await t.test('default 256x128 FX-DIR production path builds every H2/V2 index', () => {
+    const pixels = directionalImage();
+    for (let splitIndex = 1; splitIndex <= 4; splitIndex += 1) {
+      const p = { ...DEFAULT_PARAMS, horizontalSplitCount: 2, verticalSplitCount: 2, splitIndex };
+      const generated = generateSphereLithophane(pixels, p);
+      try {
+        assert.ok(generated.summary.vertexCount > 0, `Index ${splitIndex} vertices`);
+        assert.ok(generated.summary.triangleCount > 0, `Index ${splitIndex} triangles`);
+      } finally {
+        generated.geometry.dispose();
+      }
+    }
+  });
+
+  await t.test('cell volume agreement rejects a genuine diagnostic mismatch', () => {
+    assert.throws(
+      () => assertCellVolumeAgreement('synthetic', 3, 3.01),
+      /Cell volume mismatch synthetic: tetra=3, boundary=3\.01/,
+    );
   });
 
   await t.test('public split route keeps exact source ownership and neighboring boundary coordinates', () => {

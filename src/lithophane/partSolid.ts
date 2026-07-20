@@ -187,6 +187,13 @@ function signedVolume6(a: Position, b: Position, c: Position, d: Position): numb
   return bax * (cay * daz - caz * day) - bay * (cax * daz - caz * dax) + baz * (cax * day - cay * dax);
 }
 
+export function assertCellVolumeAgreement(cellId: string, tetraVolume: number, boundaryVolume: number): void {
+  const scale = Math.max(1, Math.abs(tetraVolume));
+  if (!Number.isFinite(boundaryVolume) || Math.abs(boundaryVolume - tetraVolume) > scale * 2e-12) {
+    generationFailure(`Cell volume mismatch ${cellId}: tetra=${tetraVolume}, boundary=${boundaryVolume}`);
+  }
+}
+
 export function directedTetraFaces(ids: TetraVertexIds): readonly DirectedFace[] {
   const [a, b, c, d] = ids;
   return [[b, c, d], [a, d, c], [a, b, d], [a, c, b]];
@@ -495,14 +502,15 @@ export function buildPartSolidComplex(imageData: ImageData, params: LithophanePa
       }
     }
     let boundaryVolume = 0;
+    const reference = getPosition(tetrahedra[entry.tetraIndices[0]].vertexIds[0]);
     for (const list of localFaces.values()) if (list.length === 1) {
       const [a, b, c] = list[0].map(getPosition) as [Position, Position, Position];
-      boundaryVolume += (a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0])) / 6;
+      // A closed oriented boundary has the same volume about any reference point.
+      // A cell-local vertex keeps all determinant operands at cell scale instead of
+      // subtracting large origin-based face terms for small cells far from the origin.
+      boundaryVolume += signedVolume6(reference, a, b, c) / 6;
     }
-    const scale = Math.max(1, Math.abs(tetraVolume));
-    if (!Number.isFinite(boundaryVolume) || Math.abs(boundaryVolume - tetraVolume) > scale * 2e-12) {
-      generationFailure(`Cell volume mismatch ${entry.id}: tetra=${tetraVolume}, boundary=${boundaryVolume}`);
-    }
+    assertCellVolumeAgreement(entry.id, tetraVolume, boundaryVolume);
     return Object.freeze({ ...entry, tetraIndices: Object.freeze([...entry.tetraIndices]), tetraVolume, boundaryVolume });
   });
 
