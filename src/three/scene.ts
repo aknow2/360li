@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { calculateCameraFit, LEGACY_CAMERA_FRAME } from './cameraFit';
 
 export type RotationAxis = 'x' | 'y' | 'z';
 
@@ -29,11 +30,176 @@ export const defaultCenterLightSettings: CenterLightSettings = {
 
 export type SceneHandle = {
   setMesh(mesh: THREE.Mesh | null): void;
+  fitCameraToBounds(bounds: THREE.Box3): void;
+  resetLegacyCameraFrame(): void;
   setAnimationSettings(next: AnimationSettings): void;
   setCenterLightSettings(next: CenterLightSettings): void;
+  invalidate(): void;
   resize(): void;
   dispose(): void;
 };
+
+export type SceneResourceLifecycle = {
+  start(): void;
+  invalidate(): void;
+  dispose(): void;
+  snapshot(): Readonly<{ disposed: boolean; running: boolean; frameRequest: number | null }>;
+};
+
+type SceneResourceLifecycleDependencies = {
+  requestFrame(callback: FrameRequestCallback): number;
+  cancelFrame(id: number): void;
+  renderFrame(nowMs: number, forceRender: boolean): boolean;
+  removeInvalidationListeners?(): void;
+  clearMesh(): void;
+  disposeControls(): void;
+  disposeRenderer(): void;
+};
+
+export function createSceneResourceLifecycle(
+  dependencies: SceneResourceLifecycleDependencies,
+): SceneResourceLifecycle {
+  let disposed = false;
+  let frameRequest: number | null = null;
+  let rendering = false;
+  let invalidatedWhileRendering = false;
+  let forceRenderPending = false;
+
+  const requestNextFrame = (forceRender = true) => {
+    if (disposed) return;
+    forceRenderPending ||= forceRender;
+    if (frameRequest !== null) return;
+    if (rendering) {
+      invalidatedWhileRendering = true;
+      return;
+    }
+    frameRequest = dependencies.requestFrame(frame);
+  };
+
+  const frame: FrameRequestCallback = (nowMs) => {
+    frameRequest = null;
+    if (disposed) return;
+    rendering = true;
+    invalidatedWhileRendering = false;
+    const forceRender = forceRenderPending;
+    forceRenderPending = false;
+    let keepRunning = false;
+    try {
+      keepRunning = dependencies.renderFrame(nowMs, forceRender);
+    } finally {
+      rendering = false;
+    }
+    if (!disposed && (keepRunning || invalidatedWhileRendering)) requestNextFrame(false);
+  };
+
+  return {
+    start() {
+      requestNextFrame();
+    },
+    invalidate: requestNextFrame,
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      const pendingFrame = frameRequest;
+      frameRequest = null;
+      let firstError: unknown = null;
+      const cleanup = [
+        () => { if (pendingFrame !== null) dependencies.cancelFrame(pendingFrame); },
+        () => dependencies.removeInvalidationListeners?.(),
+        dependencies.clearMesh,
+        dependencies.disposeControls,
+        dependencies.disposeRenderer,
+      ];
+      for (const release of cleanup) {
+        try { release(); } catch (error) { firstError ??= error; }
+      }
+      if (firstError) throw firstError;
+    },
+    snapshot: () => Object.freeze({
+      disposed,
+      running: !disposed && frameRequest !== null,
+      frameRequest,
+    }),
+  };
+}
+
+type SceneFrameLoopDependencies = {
+  getMesh(): THREE.Mesh | null;
+  updateControls(): boolean;
+  updateCameraLight(): void;
+  render(): void;
+};
+
+export type SceneFrameLoop = {
+  setAnimationSettings(next: AnimationSettings): void;
+  renderFrame(nowMs: number, forceRender?: boolean): boolean;
+};
+
+function normalizeAnimationSettings(next: AnimationSettings): AnimationSettings {
+  const refreshRateHz = Math.min(240, Math.max(1, Math.round(next.refreshRateHz)));
+  const rotationAxis: RotationAxis = next.rotationAxis === 'x' || next.rotationAxis === 'z'
+    ? next.rotationAxis
+    : 'y';
+  return {
+    enabled: Boolean(next.enabled),
+    rotationSpeedDegPerSec: Number.isFinite(next.rotationSpeedDegPerSec)
+      ? next.rotationSpeedDegPerSec
+      : defaultAnimationSettings.rotationSpeedDegPerSec,
+    rotationAxis,
+    refreshRateHz,
+  };
+}
+
+/** Renders one demanded frame and reports whether animation/damping needs another. */
+export function createSceneFrameLoop(
+  dependencies: SceneFrameLoopDependencies,
+  initialNowMs = performance.now(),
+): SceneFrameLoop {
+  let animationSettings = { ...defaultAnimationSettings };
+  let lastFrameMs = initialNowMs;
+  let lastRenderMs: number | null = null;
+
+  return {
+    setAnimationSettings(next) {
+      animationSettings = normalizeAnimationSettings(next);
+    },
+    renderFrame(nowMs, forceRender = false) {
+      const mesh = dependencies.getMesh();
+      const animationActive = animationSettings.enabled && mesh !== null;
+      const deltaSec = Math.max(0, Math.min(0.1, (nowMs - lastFrameMs) / 1000));
+      lastFrameMs = nowMs;
+
+      if (animationActive && mesh) {
+        const angle = THREE.MathUtils.degToRad(animationSettings.rotationSpeedDegPerSec) * deltaSec;
+        mesh.rotation[animationSettings.rotationAxis] += angle;
+      }
+
+      const controlsChanged = dependencies.updateControls();
+      const minRenderIntervalMs = 1000 / animationSettings.refreshRateHz;
+      const animationRenderDue = lastRenderMs === null || nowMs - lastRenderMs >= minRenderIntervalMs;
+      if (forceRender || !animationActive || controlsChanged || animationRenderDue) {
+        lastRenderMs = nowMs;
+        dependencies.updateCameraLight();
+        dependencies.render();
+      }
+
+      return animationActive || controlsChanged;
+    },
+  };
+}
+
+/** Bridges initialization failures to the already-allocated scene resource owner. */
+export function initializeSceneResourceLifecycle(
+  lifecycle: SceneResourceLifecycle,
+  initialize: () => void,
+): void {
+  try {
+    initialize();
+  } catch (error) {
+    try { lifecycle.dispose(); } catch { /* Preserve the initialization error. */ }
+    throw error;
+  }
+}
 
 export function createScene(canvas: HTMLCanvasElement): SceneHandle {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -71,26 +237,72 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
   scene.add(centerLight);
 
   let currentMesh: THREE.Mesh | null = null;
-  let animationSettings: AnimationSettings = { ...defaultAnimationSettings };
+  let resourceLifecycle: SceneResourceLifecycle | null = null;
+  const invalidate = () => resourceLifecycle?.invalidate();
 
   function setMesh(mesh: THREE.Mesh | null) {
     if (currentMesh) scene.remove(currentMesh);
     currentMesh = mesh;
     if (currentMesh) scene.add(currentMesh);
+    invalidate();
+  }
+
+  function drainControlsDamping() {
+    const dampingWasEnabled = controls.enableDamping;
+    // A non-damped update applies and clears pending orbit/pan deltas before reframing.
+    controls.enableDamping = false;
+    controls.update();
+    invalidate();
+    controls.enableDamping = dampingWasEnabled;
+  }
+
+  function fitCameraToBounds(bounds: THREE.Box3) {
+    drainControlsDamping();
+    const fit = calculateCameraFit(bounds, {
+      fovDeg: camera.fov,
+      aspect: camera.aspect,
+      position: camera.position,
+      target: controls.target,
+    });
+    controls.target.set(fit.target.x, fit.target.y, fit.target.z);
+    camera.position.set(fit.position.x, fit.position.y, fit.position.z);
+    camera.near = fit.near;
+    camera.far = fit.far;
+    camera.zoom = fit.zoom;
+    controls.minDistance = fit.minDistance;
+    controls.maxDistance = fit.maxDistance;
+    camera.lookAt(controls.target);
+    camera.updateProjectionMatrix();
+    controls.update();
+    invalidate();
+  }
+
+  function resetLegacyCameraFrame() {
+    drainControlsDamping();
+    camera.position.set(
+      LEGACY_CAMERA_FRAME.position.x,
+      LEGACY_CAMERA_FRAME.position.y,
+      LEGACY_CAMERA_FRAME.position.z,
+    );
+    controls.target.set(
+      LEGACY_CAMERA_FRAME.target.x,
+      LEGACY_CAMERA_FRAME.target.y,
+      LEGACY_CAMERA_FRAME.target.z,
+    );
+    camera.near = LEGACY_CAMERA_FRAME.near;
+    camera.far = LEGACY_CAMERA_FRAME.far;
+    camera.zoom = LEGACY_CAMERA_FRAME.zoom;
+    controls.minDistance = LEGACY_CAMERA_FRAME.minDistance;
+    controls.maxDistance = LEGACY_CAMERA_FRAME.maxDistance;
+    camera.lookAt(controls.target);
+    camera.updateProjectionMatrix();
+    controls.update();
+    invalidate();
   }
 
   function setAnimationSettings(next: AnimationSettings) {
-    const refreshRateHz = Math.min(240, Math.max(1, Math.round(next.refreshRateHz)));
-    const axis: RotationAxis = next.rotationAxis === 'x' || next.rotationAxis === 'z' ? next.rotationAxis : 'y';
-
-    animationSettings = {
-      enabled: Boolean(next.enabled),
-      rotationSpeedDegPerSec: Number.isFinite(next.rotationSpeedDegPerSec)
-        ? next.rotationSpeedDegPerSec
-        : defaultAnimationSettings.rotationSpeedDegPerSec,
-      rotationAxis: axis,
-      refreshRateHz,
-    };
+    frameLoop.setAnimationSettings(next);
+    invalidate();
   }
 
   function setCenterLightSettings(next: CenterLightSettings) {
@@ -100,6 +312,7 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
 
     centerLight.intensity = intensity;
     centerLight.visible = Boolean(next.enabled) && intensity > 0;
+    invalidate();
   }
 
   function resize() {
@@ -110,41 +323,40 @@ export function createScene(canvas: HTMLCanvasElement): SceneHandle {
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+    invalidate();
   }
 
-  let raf = 0;
-  let lastFrameMs = performance.now();
-  let lastRenderMs = 0;
-  function frame(nowMs: number) {
-    raf = requestAnimationFrame(frame);
+  const frameLoop = createSceneFrameLoop({
+    getMesh: () => currentMesh,
+    updateControls: () => controls.update(),
+    updateCameraLight: () => cameraLight.position.copy(camera.position),
+    render: () => renderer.render(scene, camera),
+  });
 
-    const deltaSec = Math.max(0, Math.min(0.1, (nowMs - lastFrameMs) / 1000));
-    lastFrameMs = nowMs;
+  const onControlsChange = () => invalidate();
+  resourceLifecycle = createSceneResourceLifecycle({
+    requestFrame: (callback) => requestAnimationFrame(callback),
+    cancelFrame: (id) => cancelAnimationFrame(id),
+    renderFrame: frameLoop.renderFrame,
+    removeInvalidationListeners: () => controls.removeEventListener('change', onControlsChange),
+    clearMesh: () => setMesh(null),
+    disposeControls: () => controls.dispose(),
+    disposeRenderer: () => renderer.dispose(),
+  });
+  initializeSceneResourceLifecycle(resourceLifecycle, () => {
+    controls.addEventListener('change', onControlsChange);
+    resize();
+    resourceLifecycle.start();
+  });
 
-    if (animationSettings.enabled && currentMesh) {
-      const angle = THREE.MathUtils.degToRad(animationSettings.rotationSpeedDegPerSec) * deltaSec;
-      currentMesh.rotation[animationSettings.rotationAxis] += angle;
-    }
-
-    const minRenderIntervalMs = 1000 / Math.max(1, animationSettings.refreshRateHz);
-    if (lastRenderMs && nowMs - lastRenderMs < minRenderIntervalMs) {
-      return;
-    }
-    lastRenderMs = nowMs;
-
-    controls.update();
-    cameraLight.position.copy(camera.position);
-    renderer.render(scene, camera);
-  }
-
-  resize();
-  raf = requestAnimationFrame(frame);
-
-  function dispose() {
-    cancelAnimationFrame(raf);
-    controls.dispose();
-    renderer.dispose();
-  }
-
-  return { setMesh, setAnimationSettings, setCenterLightSettings, resize, dispose };
+  return {
+    setMesh,
+    fitCameraToBounds,
+    resetLegacyCameraFrame,
+    setAnimationSettings,
+    setCenterLightSettings,
+    invalidate,
+    resize,
+    dispose: resourceLifecycle.dispose,
+  };
 }

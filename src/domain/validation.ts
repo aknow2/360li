@@ -1,11 +1,65 @@
-import type { LithophaneParams } from './params';
+import type { LithophaneParams, SplitField, SplitInputDraft } from './params';
 import type { AppError } from './errors';
 
 export type ValidationResult<T> =
   | { ok: true; value: T }
   | { ok: false; error: AppError };
 
-export function validateParams(params: LithophaneParams): ValidationResult<LithophaneParams> {
+/** Nullable UI-facing field/message validation contract. */
+export type ParamsValidationError = {
+  field: keyof LithophaneParams;
+  message: string;
+} | null;
+
+const splitFieldLabels: Record<SplitField, string> = {
+  horizontalSplitCount: 'Horizontal split count',
+  verticalSplitCount: 'Vertical split count',
+  splitIndex: 'Split Index',
+};
+
+export function splitDraftFromParams(params: LithophaneParams): SplitInputDraft {
+  return {
+    horizontalSplitCount: String(params.horizontalSplitCount),
+    verticalSplitCount: String(params.verticalSplitCount),
+    splitIndex: String(params.splitIndex),
+  };
+}
+
+function splitMaximum(params: LithophaneParams, field: SplitField): number {
+  if (field === 'horizontalSplitCount') return params.widthSegments;
+  if (field === 'verticalSplitCount') return params.heightSegments;
+  return params.horizontalSplitCount * params.verticalSplitCount;
+}
+
+function splitError(params: LithophaneParams, field: SplitField): AppError {
+  return {
+    code: 'INVALID_PARAMS',
+    field,
+    message: `${splitFieldLabels[field]} must be an integer between 1 and ${splitMaximum(params, field)}.`,
+  };
+}
+
+export function applySplitDraft(
+  params: LithophaneParams,
+  drafts: SplitInputDraft,
+  field: SplitField,
+  raw: string,
+): { params: LithophaneParams; drafts: SplitInputDraft; error: ParamsValidationError } {
+  const nextDrafts = { ...drafts, [field]: raw };
+  const parsed = Number(raw);
+  const nextParams = raw.trim() !== '' && Number.isFinite(parsed) ? { ...params, [field]: parsed } : params;
+  const result = validateParams(nextParams, nextDrafts);
+  return {
+    params: nextParams,
+    drafts: nextDrafts,
+    error: result.ok ? null : { field: result.error.field as keyof LithophaneParams, message: result.error.message },
+  };
+}
+
+export function validateParams(
+  params: LithophaneParams,
+  splitDraft?: SplitInputDraft,
+): ValidationResult<LithophaneParams> {
   if (!(params.radiusMm > 0)) {
     return {
       ok: false,
@@ -237,6 +291,21 @@ export function validateParams(params: LithophaneParams): ValidationResult<Litho
         message: 'Image scale must be > 0 and <= 1.',
       },
     };
+  }
+
+  for (const field of ['horizontalSplitCount', 'verticalSplitCount', 'splitIndex'] as const) {
+    const raw = splitDraft?.[field];
+    const rawValue = raw === undefined ? params[field] : raw;
+    const numeric = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+    if (
+      (typeof rawValue === 'string' && rawValue.trim() === '') ||
+      !Number.isFinite(numeric) ||
+      !Number.isInteger(numeric) ||
+      numeric < 1 ||
+      numeric > splitMaximum(params, field)
+    ) {
+      return { ok: false, error: splitError(params, field) };
+    }
   }
 
   return { ok: true, value: params };

@@ -1,0 +1,196 @@
+[
+  {
+    "tag": "INPUT",
+    "type": "file",
+    "name": "Source image (JPEG/PNG)"
+  },
+  {
+    "disabled": false,
+    "name": "Show grayscale texture",
+    "tag": "INPUT",
+    "type": "checkbox",
+    "value": "on"
+  },
+  {
+    "disabled": false,
+    "name": "Center 360 deg light",
+    "tag": "INPUT",
+    "type": "checkbox",
+    "value": "on"
+  },
+  {
+    "disabled": false,
+    "name": "Enable animation mode",
+    "tag": "INPUT",
+    "type": "checkbox",
+    "value": "on"
+  },
+  {
+    "disabled": false,
+    "name": "Rotation speed (deg/s): 20",
+    "tag": "INPUT",
+    "type": "range",
+    "value": "20"
+  },
+  {
+    "disabled": false,
+    "name": "Rotation axis",
+    "tag": "SELECT",
+    "type": null,
+    "value": "y"
+  },
+  {
+    "disabled": false,
+    "name": "Refresh rate (Hz): 60",
+    "tag": "INPUT",
+    "type": "range",
+    "value": "60"
+  },
+  {
+    "disabled": false,
+    "name": "Radius (mm)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "60"
+  },
+  {
+    "disabled": false,
+    "name": "Min thickness (mm)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "2.8"
+  },
+  {
+    "disabled": false,
+    "name": "Max thickness (mm)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "5.5"
+  },
+  {
+    "disabled": false,
+    "name": "Thickness direction",
+    "tag": "SELECT",
+    "type": null,
+    "value": "outward"
+  },
+  {
+    "disabled": false,
+    "name": "Bottom hole diameter (mm)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "0"
+  },
+  {
+    "disabled": false,
+    "name": "Top hole diameter (mm)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "0"
+  },
+  {
+    "disabled": false,
+    "name": "Hole latitude (0%=bottom, 100%=top)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "0"
+  },
+  {
+    "disabled": false,
+    "name": "Hole longitude (0%–100%)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "0"
+  },
+  {
+    "disabled": false,
+    "name": "Stand wall thickness (mm)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "2"
+  },
+  {
+    "disabled": false,
+    "name": "Brightness curve",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "0.6"
+  },
+  {
+    "disabled": false,
+    "name": "Contrast (0..3)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "1"
+  },
+  {
+    "disabled": false,
+    "name": "Image scale (0..1)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "1"
+  },
+  {
+    "disabled": false,
+    "name": "Flip horizontal for build",
+    "tag": "INPUT",
+    "type": "checkbox",
+    "value": "on"
+  },
+  {
+    "disabled": false,
+    "name": "Flip vertical for build",
+    "tag": "INPUT",
+    "type": "checkbox",
+    "value": "on"
+  },
+  {
+    "disabled": false,
+    "name": "Padding mode",
+    "tag": "SELECT",
+    "type": null,
+    "value": "pad"
+  },
+  {
+    "disabled": false,
+    "name": "minCos (0..1)",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "1"
+  },
+  {
+    "disabled": false,
+    "name": "Width segments",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "256"
+  },
+  {
+    "disabled": false,
+    "name": "Height segments",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "128"
+  },
+  {
+    "disabled": false,
+    "name": "Horizontal split count",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "1"
+  },
+  {
+    "disabled": false,
+    "name": "Vertical split count",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "1"
+  },
+  {
+    "disabled": false,
+    "name": "Split IndexSplit Index must be an integer between 1 and 1.",
+    "tag": "INPUT",
+    "type": "number",
+    "value": "1.5"
+  }
+]

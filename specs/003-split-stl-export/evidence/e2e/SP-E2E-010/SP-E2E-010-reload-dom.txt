@@ -1,0 +1,80 @@
+- banner:
+  - heading "Spherical Lithophane Generator" [level=1]
+- complementary:
+  - form "Lithophane controls":
+    - generic: Source image (JPEG/PNG)
+    - button "Source image (JPEG/PNG)"
+    - checkbox "Show grayscale texture" [checked]
+    - generic: Show grayscale texture
+    - group "Lighting":
+      - generic: Lighting
+      - checkbox "Center 360 deg light"
+      - generic: Center 360 deg light
+      - generic: "Center light intensity: 4.0"
+      - 'slider "Center light intensity: 4.0" [disabled]': "4"
+    - group "Animation":
+      - generic: Animation
+      - checkbox "Enable animation mode"
+      - generic: Enable animation mode
+      - generic: "Rotation speed (deg/s): 20"
+      - 'slider "Rotation speed (deg/s): 20"': "20"
+      - generic: Rotation axis
+      - combobox "Rotation axis":
+        - option "X"
+        - option "Y" [selected]
+        - option "Z"
+      - generic: "Refresh rate (Hz): 60"
+      - 'slider "Refresh rate (Hz): 60"': "60"
+    - group "Parameters":
+      - generic: Parameters
+      - generic: Radius (mm)
+      - spinbutton "Radius (mm)" [disabled]: "60"
+      - generic: Min thickness (mm)
+      - spinbutton "Min thickness (mm)" [disabled]: "2.8"
+      - generic: Max thickness (mm)
+      - spinbutton "Max thickness (mm)" [disabled]: "5.5"
+      - generic: Thickness direction
+      - combobox "Thickness direction" [disabled]:
+        - option "Outward (add thickness outside)" [disabled] [selected]
+        - option "Inward (carve thickness inside)" [disabled]
+      - generic: Bottom hole diameter (mm)
+      - spinbutton "Bottom hole diameter (mm)" [disabled]: "0"
+      - generic: Top hole diameter (mm)
+      - spinbutton "Top hole diameter (mm)" [disabled]: "0"
+      - generic: Hole latitude (0%=bottom, 100%=top)
+      - spinbutton "Hole latitude (0%=bottom, 100%=top)" [disabled]: "0"
+      - generic: Hole longitude (0%–100%)
+      - spinbutton "Hole longitude (0%–100%)" [disabled]: "0"
+      - generic: Stand wall thickness (mm)
+      - spinbutton "Stand wall thickness (mm)" [disabled]: "2"
+      - generic: Brightness curve
+      - spinbutton "Brightness curve" [disabled]: "0.6"
+      - generic: Contrast (0..3)
+      - spinbutton "Contrast (0..3)" [disabled]: "1"
+      - generic: Image scale (0..1)
+      - spinbutton "Image scale (0..1)" [disabled]: "1"
+      - checkbox "Flip horizontal for build" [disabled]
+      - generic: Flip horizontal for build
+      - checkbox "Flip vertical for build" [disabled]
+      - generic: Flip vertical for build
+      - generic: Padding mode
+      - combobox "Padding mode" [disabled]:
+        - option "Pad (white fill)" [disabled] [selected]
+        - option "Stretch" [disabled]
+      - generic: minCos (0..1)
+      - spinbutton "minCos (0..1)" [disabled]: "1"
+      - generic: Width segments
+      - spinbutton "Width segments" [disabled]: "256"
+      - generic: Height segments
+      - spinbutton "Height segments" [disabled]: "128"
+      - generic: Horizontal split count
+      - spinbutton "Horizontal split count" [disabled]: "3"
+      - generic: Vertical split count
+      - spinbutton "Vertical split count" [disabled]: "2"
+      - generic: Split Index
+      - spinbutton "Split Index" [disabled]: "5"
+    - button "Build" [disabled]
+    - button "Export STL" [disabled]
+- main:
+  - generic "3D preview":
+    - generic: 3D preview will appear here.

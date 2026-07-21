@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-07-20T16:52:08Z",
+  "scenario": "SP-E2E-008",
+  "attempt": 1,
+  "status": "FAIL",
+  "appCommit": "f66bcb8",
+  "originIsolation": "Fresh localhost origin http://127.0.0.1:4178/",
+  "browser": "Chrome 150.0.7871.125",
+  "os": "macOS 26.5.2 (25F84)",
+  "viewport": { "width": 1440, "height": 1000, "devicePixelRatio": 1 },
+  "completedBeforeFailure": {
+    "oldBuild": { "horizontal": 2, "vertical": 2, "index": 3, "ready": true },
+    "invalidDraft": {
+      "index": 9,
+      "alert": "Split Index must be an integer between 1 and 4.",
+      "buildDisabled": true,
+      "exportEnabled": true,
+      "oldCanvasExactlyUnchanged": true
+    },
+    "oldExport": {
+      "file": "../downloads/SP-E2E-008/spherical-lithophane-h2-v2-part-3-of-4.stl",
+      "bytes": 1651284,
+      "triangleCount": 33024,
+      "sha256": "7ee74a3f62e535b255f65a1c4080a83170af7e71dbf77b8185f0fc9a7ab29bea"
+    }
+  },
+  "failure": {
+    "actionIndex": "valid replacement Build after changing Split Index from 9 to 4",
+    "inputs": { "widthSegments": 256, "heightSegments": 128, "horizontal": 2, "vertical": 2, "index": 4 },
+    "visibleStatus": "Error",
+    "visibleAlert": "Cell volume mismatch shell:u165:v104: tetra=3.6605253002153213, boundary=3.660525300206567",
+    "preview": "Fix the error and try again; empty canvas; no partial mesh",
+    "buildEnabledAfterFailure": true,
+    "exportDisabledAfterFailure": true,
+    "consoleEntriesFromAppOrigin": 0,
+    "unrelatedExtensionWarnings": 6,
+    "elapsedMsIncludingTwoTrustedPointerAttemptsAndPolling": 768
+  },
+  "failureEvidence": [
+    { "file": "../screenshots/SP-E2E-008-index4-failure-full.png", "bytes": 132813, "sha256": "7e0445da561db6b000d4caab6ae427a82f8c5e4234d45fcefba845f8b5e25b54" },
+    { "file": "../screenshots/SP-E2E-008-index4-failure-canvas.png", "bytes": 14054, "sha256": "f3e78da3bd5778e426fdb83de30170c582112392886158df1cd1eb93dcc77cb8" }
+  ],
+  "preFailureEvidence": [
+    { "file": "../screenshots/SP-E2E-008-old-full.png", "bytes": 164961, "sha256": "0f57f1adc41d28530c9488036d44d13dc56f8174b666298e4198675292ab8350" },
+    { "file": "../screenshots/SP-E2E-008-old-canvas.png", "bytes": 51735, "sha256": "393f856243fca83f7b4aba468a766a5db9c815eaee3f3667829bcfd8c851fe8a" },
+    { "file": "../screenshots/SP-E2E-008-invalid-full.png", "bytes": 177088, "sha256": "398a73706e78488e4ab45360d297c7a967201717ea75bcfd8c9c97d" },
+    { "file": "../screenshots/SP-E2E-008-invalid-canvas.png", "bytes": 51735, "sha256": "393f856243fca83f7b4aba468a766a5db9c815eaee3f3667829bcfd8c851fe8a" }
+  ],
+  "hypothesis": "The per-cell tetrahedron-versus-boundary volume validation tolerance is tighter than accumulated floating-point error for some default-resolution cells; the numerical difference here is about 8.75e-12 while topology/publication otherwise remained atomic."
+}

@@ -1,0 +1,53 @@
+{
+  "timestamp": "2026-07-20T16:04:42Z",
+  "scenario": "SP-E2E-002",
+  "attempt": 1,
+  "status": "FAIL",
+  "appCommit": "dddca12",
+  "browser": "Chrome 150.0.7871.125",
+  "os": "macOS 26.5.2 (25F84)",
+  "viewport": {
+    "width": 1440,
+    "height": 1000,
+    "devicePixelRatio": 1
+  },
+  "inputs": {
+    "fixture": "FX-DIR",
+    "widthSegments": 256,
+    "heightSegments": 128,
+    "horizontalSplitCount": 2,
+    "verticalSplitCount": 2,
+    "splitIndex": 3
+  },
+  "observedReadyState": {
+    "status": "Ready",
+    "buildEnabled": true,
+    "exportEnabled": true,
+    "consoleEntriesFromAppOrigin": 0
+  },
+  "failure": {
+    "operation": "Chrome DevTools Page.captureScreenshot",
+    "attempts": [
+      "full viewport at 1440x1000",
+      "canvas clip at 1440x1000",
+      "300x200 clip at 1440x1000",
+      "full viewport after resetting the viewport to 150x100"
+    ],
+    "result": "Each attempt timed out after 5000 ms."
+  },
+  "controls": [
+    {
+      "state": "empty application at 1440x1000",
+      "result": "PASS",
+      "screenshotBytes": 58309,
+      "evidence": "../screenshots/SP-E2E-002-screenshot-probe-empty-control.png"
+    },
+    {
+      "state": "Ready H2/V2/Index3 at 32x16 segments",
+      "result": "PASS",
+      "screenshotBytes": 58601,
+      "evidence": "../screenshots/SP-E2E-002-screenshot-probe-lowres-ready.png"
+    }
+  ],
+  "conclusion": "The Chrome screenshot path is healthy; only the default-resolution Ready WebGL scene causes the capture timeout. Product performance/render scheduling must be fixed before acceptance is rerun."
+}

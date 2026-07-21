@@ -1,0 +1,51 @@
+{
+  "timestamp": "2026-07-20T16:48:10Z",
+  "scenario": "SP-E2E-006",
+  "status": "PASS",
+  "appCommit": "f66bcb8",
+  "originIsolation": "Fresh localhost origin http://127.0.0.1:4176/",
+  "browser": "Chrome 150.0.7871.125",
+  "os": "macOS 26.5.2 (25F84)",
+  "viewport": { "width": 1440, "height": 1000, "devicePixelRatio": 1 },
+  "actions": {
+    "firstFixture": "FX-DIR",
+    "splitBuild": { "horizontal": 2, "vertical": 2, "index": 3 },
+    "orbitHorizontalPx": -160,
+    "zoomWheelNotches": -6,
+    "replacementFixture": "FX-ALT",
+    "replacementBuild": { "horizontal": 1, "vertical": 1, "index": 1 }
+  },
+  "observed": {
+    "splitReady": true,
+    "newImageImmediatelyShowsPressBuild": true,
+    "newImageImmediatelyDisablesExport": true,
+    "newImageDoesNotAutoBuild": true,
+    "clearedCanvasExactlyMatchesEmptyReference": true,
+    "clearedPixelSha256": "3983dbe0c8668b0c9bd7bb051d6369e8ed1c5e1be1a6f02c820adb2a9704eac3",
+    "replacementReady": true,
+    "replacementElapsedMsIncludingAutomationPolling": 319,
+    "legacyAltMask": {
+      "threshold": 12,
+      "changedPixels": 435602,
+      "bbox": { "left": 169, "top": 90, "right": 916, "bottom": 830, "width": 748, "height": 741 },
+      "centroid": { "x": 542.5071992323268, "y": 457.3437059517633 },
+      "baselineBboxExact": true,
+      "baselineCentroidDeltaPx": { "x": 0.0014836149965002925, "y": 0.0009893173538970685 },
+      "withinTolerance": true
+    },
+    "consoleEntriesFromAppOrigin": 0,
+    "unrelatedExtensionWarnings": 6
+  },
+  "screenshots": [
+    { "file": "../screenshots/SP-E2E-006-split-full.png", "bytes": 187723, "sha256": "ca6fbe8feff5187e45fc86b7b94cc364e7c2254730b8aef0157b66bb962219cd" },
+    { "file": "../screenshots/SP-E2E-006-split-canvas.png", "bytes": 76630, "sha256": "232d720e10346be3c84d8bf87e9f829c787d77f00666243a198e8c8abedf149b" },
+    { "file": "../screenshots/SP-E2E-006-cleared-full.png", "bytes": 154916, "sha256": "9b734dbe78253577e512f889c40f61abce27038e6cf6eb83ea645f2982082a18" },
+    { "file": "../screenshots/SP-E2E-006-cleared-canvas.png", "bytes": 14055, "sha256": "8de94aa6adfd8edf39e2d856ab51e4b79897ff5988ee496f71d4f1c4e868eb2f" },
+    { "file": "../screenshots/SP-E2E-006-legacy-alt-full.png", "bytes": 268979, "sha256": "983cc64e535f2209cc0ee985debaff7d9aeedb53eedef698e21484cf2fda6292" },
+    { "file": "../screenshots/SP-E2E-006-legacy-alt-canvas.png", "bytes": 157952, "sha256": "561430ae0dd5dd7d0cd6166ebd4b0b9b5e22a6e6cb4c3f82b12f5548c13d50dd" }
+  ],
+  "automatedEvidence": [
+    "tests/unit/state.test.ts — source selection clears Built Part and never auto-builds",
+    "tests/unit/viewer.test.ts — split-to-legacy camera reset and resource cleanup"
+  ]
+}

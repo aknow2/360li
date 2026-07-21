@@ -1,0 +1,99 @@
+{
+  "timestamp": "2026-07-20T17:30:00Z",
+  "appCommit": "8f782de",
+  "browser": "Chrome 150.0.7871.125",
+  "os": "macOS 26.5.2 (25F84)",
+  "defaultViewport": { "width": 1440, "height": 1000, "devicePixelRatio": 1 },
+  "scenarios": [
+    {
+      "id": "SP-E2E-009",
+      "status": "PASS",
+      "origin": "http://127.0.0.1:4180/",
+      "assertions": ["corrupt PNG produced a handled visible decode error", "no partial Preview or failure download", "valid image recovered without reload", "H2/V2/Index3 STL exported"],
+      "download": { "file": "../downloads/SP-E2E-009/spherical-lithophane-h2-v2-part-3-of-4.stl", "bytes": 1651284, "triangles": 33024, "sha256": "7ee74a3f62e535b255f65a1c4080a83170af7e71dbf77b8185f0fc9a7ab29bea" },
+      "appOriginConsoleEntries": 0,
+      "unrelatedExtensionWarnings": 6
+    },
+    {
+      "id": "SP-E2E-010",
+      "status": "PARTIAL",
+      "origin": "http://127.0.0.1:4181/",
+      "assertions": ["Part A persisted H3/V2/Index5", "reload restored no file, Preview, geometry, or exportable result"],
+      "notRun": "Part B old-v1 localStorage seed was not executed because the connected browser policy rejects direct storage mutation and explicitly forbids workarounds.",
+      "automatedSupport": "preferences migration unit coverage passed in the 108/108 repository suite",
+      "appOriginConsoleEntries": 0
+    },
+    {
+      "id": "SP-E2E-011",
+      "status": "PASS",
+      "origin": "http://127.0.0.1:4183/",
+      "assertions": ["texture off changed the outer surface", "texture on-again returned within raster tolerance", "unbuilt scale/flip/padding edits left Built Part unchanged within raster tolerance", "frozen H2/V2/Index3 STL exported"],
+      "rerunHistory": "Attempt 1 used an insufficient 1.2 second damping wait; rerun 2 used 4 seconds and passed.",
+      "download": { "file": "../downloads/SP-E2E-011-rerun2/spherical-lithophane-h2-v2-part-3-of-4.stl", "bytes": 1651284, "triangles": 33024, "sha256": "7ee74a3f62e535b255f65a1c4080a83170af7e71dbf77b8185f0fc9a7ab29bea" },
+      "appOriginConsoleEntries": 0
+    },
+    {
+      "id": "SP-E2E-012",
+      "status": "PASS",
+      "origin": "http://127.0.0.1:4186/",
+      "controls": { "lightIntensity": 7, "rotationAxis": "y", "rotationSpeedDegPerSec": 90, "refreshRateHz": 30 },
+      "assertions": ["orbit changed orientation", "five-notch zoom changed Preview", "light changed luminance", "animation frames differed", "two post-disable frames were pixel-exact"],
+      "stablePixelSha256": "1fdaaf914e5436909fb496d64eb43d881d870f8cc973c35eaf1af1e406445356",
+      "rerunHistory": "Two harness-only attempts established the CUA wheel unit and React range-input event sequence; clean rerun 3 passed.",
+      "appOriginConsoleEntries": 0
+    },
+    {
+      "id": "SP-E2E-013",
+      "status": "PASS",
+      "origin": "http://127.0.0.1:4188/",
+      "assertions": ["28-entry focus order matched", "literal 1.5 produced a nearby error and skipped disabled Build", "Shift+Tab returned to Split Index", "keyboard Enter built and exported"],
+      "download": { "file": "../downloads/SP-E2E-013-rerun3/spherical-lithophane.stl", "bytes": 6502484, "triangles": 130048, "sha256": "65756d2821bf60fe57adeac56a7556e3a50b1d0f6cc17a0ca6c1c204bdaa4058" },
+      "rerunHistory": "Chrome tab control interruption and same-origin draft leakage were isolated; clean port 4188 rerun passed.",
+      "appOriginConsoleEntries": 0
+    },
+    {
+      "id": "SP-E2E-014",
+      "status": "PASS",
+      "origin": "http://127.0.0.1:4189/",
+      "layout": { "headerHeight": 52, "sidebarWidth": 320, "canvas": "1086x914", "documentHorizontalOverflow": 0, "sidebarScrollTopRange": [0, 970] },
+      "assertions": ["no overlap", "sidebar independently reached both ends", "1200x900 round trip retained the same Ready Preview", "before/after canvas was pixel-exact"],
+      "appOriginConsoleEntries": 0
+    },
+    {
+      "id": "SP-E2E-015",
+      "status": "PASS",
+      "origin": "http://127.0.0.1:4190/",
+      "viewport": { "width": 1024, "height": 768, "devicePixelRatio": 1 },
+      "layout": { "headerHeight": 52, "sidebarWidth": 320, "canvas": "670x682", "documentHorizontalOverflow": 0, "sidebarScrollTopRange": [0, 1202] },
+      "assertions": ["side-by-side regions did not overlap", "all controls were reachable", "Build completed", "orbit and two-notch zoom changed Preview"],
+      "appOriginConsoleEntries": 0
+    },
+    {
+      "id": "SP-E2E-016",
+      "status": "PASS",
+      "origin": "http://127.0.0.1:4191/",
+      "downloads": [
+        { "file": "../downloads/SP-E2E-016/click-1/spherical-lithophane-h2-v2-part-3-of-4.stl", "bytes": 1651284, "triangles": 33024, "sha256": "7ee74a3f62e535b255f65a1c4080a83170af7e71dbf77b8185f0fc9a7ab29bea" },
+        { "file": "../downloads/SP-E2E-016/click-2/spherical-lithophane-h2-v2-part-3-of-4.stl", "bytes": 1651284, "triangles": 33024, "sha256": "7ee74a3f62e535b255f65a1c4080a83170af7e71dbf77b8185f0fc9a7ab29bea" },
+        { "file": "../downloads/SP-E2E-016/click-3/spherical-lithophane.stl", "bytes": 6502484, "triangles": 130048, "sha256": "9ac014db7e8300ddea283acfca20729f218640398f1dddb56fa8cb9fd8b0c831" }
+      ],
+      "assertions": ["Preview controls remained usable", "unbuilt Index4 edit re-exported frozen Index3", "new FX-ALT image cleared and rebuilt legacy 1x1"],
+      "appOriginConsoleEntries": 0
+    },
+    {
+      "id": "SP-E2E-017",
+      "status": "PASS",
+      "origin": "http://127.0.0.1:4192/",
+      "fixture": { "file": "performance-4096x2048.png", "bytes": 33559108, "sha256": "396db3030f4c7f73bf634f0f5613f7b27f29c6622bce12b0c4252dd7d5ae468b" },
+      "inputs": { "widthSegments": 256, "heightSegments": 128, "horizontal": 2, "vertical": 2, "index": 3 },
+      "timing": { "tClickEpochMs": 1784568587446, "tReadyEpochMs": 1784568594324, "durationMs": 6878, "limitMsExclusive": 30000 },
+      "doubleClick": { "secondPointerAttemptGapAfterFirstAckMs": 51, "generatingTransitionsObserved": 1, "readyTransitionsObserved": 1, "duplicateDownloads": 0 },
+      "download": { "file": "../downloads/SP-E2E-017/spherical-lithophane-h2-v2-part-3-of-4.stl", "bytes": 1651284, "triangles": 33024, "sha256": "bc49465a999376d7eac84691a737fae942d5b24c5613c23a5e4525133eea760e" },
+      "appOriginConsoleEntries": 0
+    }
+  ],
+  "browserToolLimitations": [
+    "The connected browser API does not expose request/HAR capture, so client-only behavior is supported by zero app-origin console entries and the existing automated no-network boundaries rather than a new HAR artifact.",
+    "MutationObserver and performance globals are excluded from the read-only evaluator; status transitions were observed with DOM snapshots and conservative epoch timing."
+  ]
+}

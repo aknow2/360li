@@ -1,0 +1,147 @@
+{
+  "cases": [
+    {
+      "id": "outward-default",
+      "image": {
+        "width": 7,
+        "height": 5,
+        "recipe": "seed=17; rgba=(seed+37*x+19*y, seed+11*x+53*y, seed+71*x+7*y, 255) mod 256"
+      },
+      "params": {
+        "radiusMm": 60,
+        "minThicknessMm": 2.8,
+        "maxThicknessMm": 5.5,
+        "holeDiameterMm": 0,
+        "topHoleDiameterMm": 0,
+        "holeLatitude": 0,
+        "holeLongitude": 0,
+        "standWallThicknessMm": 2,
+        "widthSegments": 256,
+        "heightSegments": 128,
+        "contrast": 1,
+        "brightnessCurve": 0.6,
+        "minCos": 1,
+        "imageScale": 1,
+        "flipHorizontal": false,
+        "flipVertical": false,
+        "paddingMode": "pad",
+        "thicknessDirection": "outward"
+      },
+      "stl": {
+        "file": "legacy-1x1-outward.stl",
+        "byteLength": 6502484,
+        "triangleCount": 130048,
+        "sha256": "67f7b647738d2469cd60f98675a36f3b36c6ee091da501f37ff30ae532f22401"
+      },
+      "geometry": {
+        "attributes": {
+          "position": {
+            "byteLength": 795672,
+            "sha256": "2bd6911cc01a7dde5c1bd14e847748a6a8f38f82c3bc6dd3bb5c3a7782775046"
+          },
+          "uv": {
+            "byteLength": 530448,
+            "sha256": "370dd908c78fea8ae6eb85bcd50ef255fadf8d5898f5f385b66eb671d9dc3d52"
+          },
+          "normal": {
+            "byteLength": 795672,
+            "sha256": "06c59bea235b6b29aec91fcbcf185d9a593a7290c8b8e470f1d0719c4f816111"
+          }
+        },
+        "index": {
+          "constructor": "Uint32Array",
+          "byteLength": 1560576,
+          "sha256": "0fc30b8689a4523a2ee1b3ff992edc4dd24c257b1dbe813587038a593516da0c"
+        },
+        "groups": [
+          {
+            "start": 0,
+            "count": 195072,
+            "materialIndex": 0
+          },
+          {
+            "start": 195072,
+            "count": 195072,
+            "materialIndex": 1
+          }
+        ],
+        "vertexCount": 66306,
+        "triangleCount": 130048
+      }
+    },
+    {
+      "id": "inward-holes-stand-rotation",
+      "image": {
+        "width": 9,
+        "height": 6,
+        "recipe": "seed=91; rgba=(seed+37*x+19*y, seed+11*x+53*y, seed+71*x+7*y, 255) mod 256"
+      },
+      "params": {
+        "radiusMm": 60,
+        "minThicknessMm": 2.8,
+        "maxThicknessMm": 5.5,
+        "holeDiameterMm": 24,
+        "topHoleDiameterMm": 24,
+        "holeLatitude": 23,
+        "holeLongitude": 37,
+        "standWallThicknessMm": 2,
+        "widthSegments": 48,
+        "heightSegments": 24,
+        "contrast": 1,
+        "brightnessCurve": 0.6,
+        "minCos": 1,
+        "imageScale": 1,
+        "flipHorizontal": false,
+        "flipVertical": false,
+        "paddingMode": "pad",
+        "thicknessDirection": "inward"
+      },
+      "stl": {
+        "file": "legacy-1x1-holes-stand-inward.stl",
+        "byteLength": 211284,
+        "triangleCount": 4224,
+        "sha256": "ad15b6be3e7f3f44d413028dcbc95fc8a5d672f0bc989b602694c1afb3dd3c50"
+      },
+      "geometry": {
+        "attributes": {
+          "position": {
+            "byteLength": 31164,
+            "sha256": "bacf11628eef222ae7e304320ab3c8f00a5ef7247ecb01bbd628dd2368a395a1"
+          },
+          "uv": {
+            "byteLength": 20776,
+            "sha256": "325b23516062b5434fffedd322dc1ce62addeb29106de10d240d3ae369298fd9"
+          },
+          "normal": {
+            "byteLength": 31164,
+            "sha256": "5cdd44fb521857d77fdbb5041418367446651340f50f6cbbd9a4ee6ab86524a6"
+          }
+        },
+        "index": {
+          "constructor": "Uint16Array",
+          "byteLength": 25344,
+          "sha256": "d1294e94531eadd165ce13932215eaadf37185d9d692dee4823b7207c7d5ee73"
+        },
+        "groups": [
+          {
+            "start": 0,
+            "count": 5472,
+            "materialIndex": 0
+          },
+          {
+            "start": 5472,
+            "count": 5472,
+            "materialIndex": 1
+          },
+          {
+            "start": 10944,
+            "count": 1728,
+            "materialIndex": 2
+          }
+        ],
+        "vertexCount": 2597,
+        "triangleCount": 4224
+      }
+    }
+  ]
+}

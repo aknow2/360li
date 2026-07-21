@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-07-20T16:45:26Z",
+  "scenario": "SP-E2E-005",
+  "status": "PASS",
+  "appCommit": "f66bcb8",
+  "originIsolation": "Fresh localhost origin http://127.0.0.1:4175/",
+  "browser": "Chrome 150.0.7871.125",
+  "os": "macOS 26.5.2 (25F84)",
+  "viewport": { "width": 1440, "height": 1000, "devicePixelRatio": 1 },
+  "actions": {
+    "splitBuild": { "horizontal": 2, "vertical": 2, "index": 3 },
+    "orbitHorizontalPx": -160,
+    "zoomWheelNotches": -6,
+    "replacementBuild": { "horizontal": 1, "vertical": 1, "index": 1 }
+  },
+  "observed": {
+    "splitReady": true,
+    "replacementReady": true,
+    "replacementElapsedMsIncludingAutomationPolling": 335,
+    "transientGeneratingState": "The 1x1 replacement completed before the post-click DOM round trip. The concurrent screenshot raced before the click and is retained only as an excluded diagnostic; atomic clear is covered by T8.1 and the slower SP-E2E-002 Generating capture.",
+    "legacyPixelSha256": "979fdbab9c8ab2329789f828eb51afb672c819a749f217e8fde1494887c69c2d",
+    "legacyMask": {
+      "threshold": 12,
+      "changedPixels": 431845,
+      "bbox": { "left": 170, "top": 91, "right": 915, "bottom": 830, "width": 746, "height": 740 },
+      "centroid": { "x": 544.0225219696882, "y": 460.3500885734465 },
+      "baselineBboxExact": true,
+      "baselineCentroidDeltaPx": { "x": -0.007656763453489424, "y": -0.06128021623109481 },
+      "matchesSP004FreshPixelSha": true,
+      "withinTolerance": true
+    },
+    "consoleEntriesFromAppOrigin": 0,
+    "unrelatedExtensionWarnings": 6
+  },
+  "screenshots": [
+    { "file": "../screenshots/SP-E2E-005-split-full.png", "bytes": 187723, "sha256": "ca6fbe8feff5187e45fc86b7b94cc364e7c2254730b8aef0157b66bb962219cd" },
+    { "file": "../screenshots/SP-E2E-005-split-canvas.png", "bytes": 76629, "sha256": "911e14fa119f0c47deefeda475fd860e17d15bee8e34356b085cd7ece98cf33c" },
+    { "file": "../screenshots/SP-E2E-005-legacy-full.png", "bytes": 207323, "sha256": "80eae0693fbe36287b7f389ee5797aa22271e136a7ecbafa8e080abc7b249735" },
+    { "file": "../screenshots/SP-E2E-005-legacy-canvas.png", "bytes": 101110, "sha256": "098e3feb3e55c3461d6a3efb68b58e90c0029b21e45f5e056deae6e4b78ac43a" }
+  ],
+  "automatedEvidence": [
+    "tests/unit/viewer.test.ts — presentation order retains camera mode and resets only split-to-legacy",
+    "tests/unit/sceneFit.test.ts — exact legacy reset values and split fit"
+  ]
+}

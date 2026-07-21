@@ -4,6 +4,10 @@ import { createImageSampler } from './imageSampler';
 import { brightnessToThicknessMm } from './thickness';
 import { compensationFactor } from './compensation';
 import type { GenerationSummary } from '../domain/contracts';
+import { buildPartSolidComplex } from './partSolid';
+import { resolveSplitCell } from './splitCell';
+import { clipCanonicalVolumeComplex } from './tetraClip';
+import { extractBoundaryMesh, validateClosedSolid } from './meshTopology';
 
 export type GenerateResult = {
   geometry: THREE.BufferGeometry;
@@ -65,7 +69,7 @@ function makeTopHoleCut(diameterMm: number, baseRadius: number, heightSegments: 
   return { enabled, radiusMm, ringRow, ringV };
 }
 
-export function generateSphereLithophane(imageData: ImageData, params: LithophaneParams): GenerateResult {
+function generateLegacySphereLithophane(imageData: ImageData, params: LithophaneParams): GenerateResult {
   const sampler = createImageSampler(imageData);
 
   const thicknessDirection = params.thicknessDirection ?? 'outward';
@@ -367,4 +371,77 @@ export function generateSphereLithophane(imageData: ImageData, params: Lithophan
       triangleCount: combinedIndexArray.length / 3,
     },
   };
+}
+
+function splitGenerationFailure(message: string, cause?: unknown): Error & { code: 'GENERATION_FAILED' } {
+  const error = new Error(message, cause === undefined ? undefined : { cause }) as Error & { code: 'GENERATION_FAILED' };
+  error.code = 'GENERATION_FAILED';
+  return error;
+}
+
+function generateSplitSphereLithophane(imageData: ImageData, params: LithophaneParams): GenerateResult {
+  let geometry: THREE.BufferGeometry | null = null;
+  try {
+    const cell = resolveSplitCell(params);
+    const complex = buildPartSolidComplex(imageData, params, cell);
+    const clipped = clipCanonicalVolumeComplex(complex);
+    const mesh = extractBoundaryMesh(clipped);
+    const canonicalByKey = new Map(complex.vertices.map((vertex) => [vertex.key, vertex]));
+    const uvs = new Float32Array(mesh.counts.vertices * 2);
+    for (let index = 0; index < mesh.stableVertexKeys.length; index += 1) {
+      const sample = canonicalByKey.get(mesh.stableVertexKeys[index])?.sample;
+      if (sample?.kind === 'image') {
+        uvs[index * 2] = sample.finalU;
+        uvs[index * 2 + 1] = sample.finalV;
+      }
+    }
+
+    geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+    geometry.setIndex(new THREE.BufferAttribute(mesh.indices, 1));
+    geometry.clearGroups();
+    for (const group of mesh.groups) geometry.addGroup(group.start, group.count, group.materialIndex);
+
+    const tiltAngle = ((params.holeLatitude ?? 0) / 100) * Math.PI;
+    const spinAngle = ((params.holeLongitude ?? 0) / 100) * Math.PI * 2;
+    if (tiltAngle !== 0 || spinAngle !== 0) {
+      const rotation = new THREE.Matrix4()
+        .makeRotationY(spinAngle)
+        .multiply(new THREE.Matrix4().makeRotationX(tiltAngle));
+      geometry.applyMatrix4(rotation);
+    }
+    const finalPositions = geometry.getAttribute('position').array;
+    if (!(finalPositions instanceof Float32Array)) {
+      throw splitGenerationFailure('Final split positions are not Float32 geometry');
+    }
+    validateClosedSolid({ positions: finalPositions, indices: mesh.indices });
+    geometry.computeVertexNormals();
+
+    const result = {
+      geometry,
+      summary: {
+        vertexCount: mesh.counts.vertices,
+        triangleCount: mesh.counts.triangles,
+      },
+    };
+    geometry = null;
+    return result;
+  } catch (cause) {
+    geometry?.dispose();
+    if (cause instanceof Error && (cause as Error & { code?: string }).code === 'GENERATION_FAILED') throw cause;
+    throw splitGenerationFailure('Split geometry generation failed', cause);
+  }
+}
+
+export function generateSphereLithophane(imageData: ImageData, params: LithophaneParams): GenerateResult {
+  if (
+    params.horizontalSplitCount === 1 &&
+    params.verticalSplitCount === 1 &&
+    params.splitIndex === 1
+  ) {
+    return generateLegacySphereLithophane(imageData, params);
+  }
+
+  return generateSplitSphereLithophane(imageData, params);
 }
